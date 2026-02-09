@@ -94,6 +94,36 @@ docs/                   Design documents
 - **Functional components** and hooks only -- no class components.
 - **Named exports** preferred, except where Next.js conventions require default exports.
 
+## Testing
+
+**All new code must be covered by tests. All tests must pass before a PR can be merged.**
+
+Tests are organized into three categories:
+
+| Category | Directory | Environment | What it covers |
+|----------|-----------|-------------|----------------|
+| **Unit tests** | `__tests__/lib/` | Node | Core logic: cache, SQLite reader, JSONL fallback, graph metrics, filter engine |
+| **API tests** | `__tests__/api/` | Node | All API route handlers: issues, insights, priority, diff, health, repos |
+| **Component tests** | `__tests__/components/` | jsdom | UI components: IssueCard, FilterBar, MetricPanel, ErrorBoundary, ShortcutsHelp |
+
+A test fixture helper at `__tests__/fixtures/create-test-db.ts` creates a temporary `.beads/beads.db` SQLite database with known test data. Use it for any test that needs realistic issue data.
+
+### Running tests
+
+```bash
+npm test               # Run all tests
+npm run test:coverage  # Run with coverage report
+npm test -- --watch    # Watch mode during development
+```
+
+### Writing tests
+
+- Place test files alongside their category: `__tests__/lib/`, `__tests__/api/`, or `__tests__/components/`
+- Use the test fixture for data: `import { createTestFixture } from "../fixtures/create-test-db"`
+- Mock external dependencies (`bv-client`, `repo-config`) in API tests
+- Use React Testing Library for component tests
+- Aim for meaningful coverage -- test behavior, not implementation details
+
 ## Pull Request Process
 
 1. Create a branch from `main`:
@@ -101,15 +131,16 @@ docs/                   Design documents
    git checkout -b feat/my-feature main
    ```
 2. Make your changes.
-3. Ensure checks pass:
+3. **Write tests for new code** and ensure all tests pass:
    ```bash
+   npm test
    npm run lint
    npm run build
    ```
 4. Commit using [Conventional Commits](#commit-message-convention) (see below).
 5. Push and open a pull request against `main`.
 6. Write a clear PR title and description explaining what changed and why.
-7. All CI checks must pass before the PR can be merged.
+7. All CI checks (lint, type check, tests, build) must pass before the PR can be merged.
 
 ## Commit Message Convention
 
