@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDiff } from "@/lib/bv-client";
+import { getActiveProjectPath } from "@/lib/repo-config";
 
 const SAFE_REF_PATTERN = /^[a-zA-Z0-9~^._\-/]+$/;
 
@@ -17,7 +18,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const data = await getDiff(since);
+    const projectPath = await getActiveProjectPath();
+    const data = await getDiff(since, projectPath);
     return NextResponse.json(data);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

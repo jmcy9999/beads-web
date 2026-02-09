@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getPlan } from "@/lib/bv-client";
+import { getActiveProjectPath } from "@/lib/repo-config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    const data = await getPlan();
+    const projectPath = await getActiveProjectPath();
+    const data = await getPlan(projectPath);
     return NextResponse.json(data);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";

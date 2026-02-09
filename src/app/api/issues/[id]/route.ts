@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIssueById } from "@/lib/bv-client";
+import { getActiveProjectPath } from "@/lib/repo-config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,7 +10,8 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   try {
-    const data = await getIssueById(params.id);
+    const projectPath = await getActiveProjectPath();
+    const data = await getIssueById(params.id, projectPath);
     return NextResponse.json(data);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
