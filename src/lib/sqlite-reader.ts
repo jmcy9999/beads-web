@@ -30,6 +30,7 @@ interface IssueRow {
   updated_at: string;
   closed_at: string | null;
   close_reason: string | null;
+  story_points: number | null;
 }
 
 interface DepRow {
@@ -67,7 +68,8 @@ export function readIssuesFromDB(projectPath: string): BeadsIssue[] | null {
         i.created_by,
         i.updated_at,
         i.closed_at,
-        i.close_reason
+        i.close_reason,
+        i.story_points
       FROM issues i
       LEFT JOIN labels l ON l.issue_id = i.id
       WHERE i.deleted_at IS NULL AND i.status <> 'tombstone'
@@ -114,6 +116,7 @@ export function readIssuesFromDB(projectPath: string): BeadsIssue[] | null {
       updated_at: row.updated_at,
       closed_at: row.closed_at || undefined,
       close_reason: row.close_reason || undefined,
+      story_points: row.story_points ?? undefined,
     }));
   } catch {
     // If anything fails reading SQLite, return null so caller falls back

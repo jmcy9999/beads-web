@@ -76,6 +76,19 @@ export function IssueCard({
           {issue.owner ?? "\u2014"}
         </td>
         <td className="px-3 py-2 text-sm">
+          {issue.epic ? (
+            <Link
+              href={`/issue/${issue.epic}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              {issue.epic_title ?? issue.epic}
+            </Link>
+          ) : (
+            <span className="text-gray-500">{"\u2014"}</span>
+          )}
+        </td>
+        <td className="px-3 py-2 text-sm">
           {issue.blocked_by.length > 0 ? (
             <span className="text-status-blocked font-medium">
               {issue.blocked_by.length}

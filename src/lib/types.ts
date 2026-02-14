@@ -43,6 +43,7 @@ export interface BeadsIssue {
   issue_type: IssueType;
   owner?: string;
   parent?: string;
+  story_points?: number;
   labels?: string[];
   dependencies?: IssueDependency[];
   created_at: string;
@@ -110,6 +111,9 @@ export interface PlanIssue {
   blocked_by: string[];
   blocks: string[];
   impact_score?: number;
+  story_points?: number;
+  epic?: string;       // parent epic ID (from parent-child dependencies)
+  epic_title?: string; // parent epic title (for display)
 }
 
 export interface PlanTrack {

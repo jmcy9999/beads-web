@@ -15,6 +15,7 @@ export interface FilterCriteria {
   owner?: string;
   labels?: string[];
   projects?: string[];
+  epic?: string;       // filter to specific epic, or "__none__" for no epic
   hasBlockers?: boolean;
   isStale?: boolean; // updated > 30 days ago
   isRecent?: boolean; // updated < 7 days ago
@@ -137,6 +138,15 @@ export function applyFilter(
       const projectLabels = filter.projects.map((p) => `project:${p}`);
       if (!issue.labels || !projectLabels.some((pl) => issue.labels!.includes(pl))) {
         return false;
+      }
+    }
+
+    // Epic filter
+    if (filter.epic) {
+      if (filter.epic === "__none__") {
+        if (issue.epic) return false;
+      } else {
+        if (issue.epic !== filter.epic) return false;
       }
     }
 

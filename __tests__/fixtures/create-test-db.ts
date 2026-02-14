@@ -172,6 +172,7 @@ export function createTestFixture(): TestFixture {
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       closed_at DATETIME,
       close_reason TEXT DEFAULT '',
+      story_points INTEGER,
       deleted_at DATETIME
     );
 

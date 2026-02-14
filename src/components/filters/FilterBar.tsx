@@ -21,6 +21,7 @@ interface FilterBarProps {
   activeViewId?: string;
   onViewChange?: (viewId: string) => void;
   availableProjects?: string[];
+  availableEpics?: Map<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +61,7 @@ function isDefaultFilter(filter: FilterCriteria): boolean {
     !filter.owner &&
     (!filter.labels || filter.labels.length === 0) &&
     (!filter.projects || filter.projects.length === 0) &&
+    !filter.epic &&
     filter.hasBlockers === undefined &&
     !filter.search
   );
@@ -174,6 +176,7 @@ export function FilterBar({
   activeViewId,
   onViewChange,
   availableProjects = [],
+  availableEpics,
 }: FilterBarProps) {
   const [views, setViews] = useState<SavedView[]>(() => getAllViews());
   const [showSavePrompt, setShowSavePrompt] = useState(false);
@@ -231,6 +234,14 @@ export function FilterBar({
     onFilterChange({
       ...filter,
       projects: projects.length > 0 ? projects : undefined,
+    });
+    onViewChange?.("");
+  };
+
+  const handleEpicChange = (epic: string | undefined) => {
+    onFilterChange({
+      ...filter,
+      epic: epic || undefined,
     });
     onViewChange?.("");
   };
@@ -336,6 +347,32 @@ export function FilterBar({
             renderOption={(p) => p}
             onChange={handleProjectChange}
           />
+        )}
+
+        {/* Epic filter */}
+        {availableEpics && availableEpics.size > 0 && (
+          <div className="relative">
+            <select
+              value={filter.epic ?? ""}
+              onChange={(e) => handleEpicChange(e.target.value || undefined)}
+              className="appearance-none px-3 py-1.5 pr-7 text-sm bg-surface-2 border border-border-default rounded-md text-gray-300 hover:text-white hover:border-gray-500 transition-colors cursor-pointer focus:outline-none focus:border-gray-500"
+            >
+              <option value="">All Epics</option>
+              <option value="__none__">No Epic</option>
+              {Array.from(availableEpics.entries()).map(([id, title]) => (
+                <option key={id} value={id}>{title}</option>
+              ))}
+            </select>
+            <svg
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         )}
 
         {/* Spacer pushes actions to right */}

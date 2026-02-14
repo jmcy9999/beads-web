@@ -8,7 +8,7 @@ import { IssueCard } from "@/components/ui/IssueCard";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { useTokenUsageSummary } from "@/hooks/useTokenUsage";
 
-type SortKey = "id" | "project" | "title" | "status" | "priority" | "owner" | "blocked_by" | "cost";
+type SortKey = "id" | "project" | "title" | "status" | "priority" | "owner" | "epic" | "blocked_by" | "cost";
 type SortDir = "asc" | "desc";
 
 interface IssueTableProps {
@@ -27,6 +27,7 @@ const COLUMN_HEADERS: { key: SortKey; label: string }[] = [
   { key: "status", label: "Status" },
   { key: "priority", label: "Priority" },
   { key: "owner", label: "Owner" },
+  { key: "epic", label: "Epic" },
   { key: "blocked_by", label: "Blocked By" },
   { key: "cost", label: "Cost" },
 ];
@@ -50,6 +51,8 @@ function comparePlanIssues(
       return (a.priority as number) - (b.priority as number);
     case "owner":
       return (a.owner ?? "").localeCompare(b.owner ?? "");
+    case "epic":
+      return (a.epic ?? "").localeCompare(b.epic ?? "");
     case "blocked_by":
       return a.blocked_by.length - b.blocked_by.length;
     case "cost": {
@@ -92,6 +95,16 @@ export function IssueTable({ issues }: IssueTableProps) {
     return Array.from(projects).sort();
   }, [issues]);
 
+  const availableEpics = useMemo(() => {
+    const epics = new Map<string, string>();
+    for (const issue of issues) {
+      if (issue.epic) {
+        epics.set(issue.epic, issue.epic_title ?? issue.epic);
+      }
+    }
+    return epics;
+  }, [issues]);
+
   const sortedIssues = useMemo(() => {
     const filtered = applyFilter(issues, filter);
 
@@ -125,6 +138,7 @@ export function IssueTable({ issues }: IssueTableProps) {
         activeViewId={activeViewId}
         onViewChange={setActiveViewId}
         availableProjects={availableProjects}
+        availableEpics={availableEpics}
       />
 
       {/* Desktop table */}

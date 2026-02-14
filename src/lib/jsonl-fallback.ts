@@ -78,22 +78,34 @@ export function issuesToPlan(
 
   const blockedByMap = new Map<string, Set<string>>();
   const blocksMap = new Map<string, Set<string>>();
+  const parentMap = new Map<string, string>(); // child -> parent (epic)
 
   for (const issue of issues) {
     if (!issue.dependencies) continue;
     for (const dep of issue.dependencies) {
-      // dep.issue_id depends on dep.depends_on_id
-      // => dep.depends_on_id blocks dep.issue_id
-      if (!blockedByMap.has(dep.issue_id)) {
-        blockedByMap.set(dep.issue_id, new Set());
-      }
-      blockedByMap.get(dep.issue_id)!.add(dep.depends_on_id);
+      if (dep.type === "parent-child") {
+        // dep.issue_id is child of dep.depends_on_id (the epic)
+        parentMap.set(dep.issue_id, dep.depends_on_id);
+      } else {
+        // dep.issue_id depends on dep.depends_on_id
+        // => dep.depends_on_id blocks dep.issue_id
+        if (!blockedByMap.has(dep.issue_id)) {
+          blockedByMap.set(dep.issue_id, new Set());
+        }
+        blockedByMap.get(dep.issue_id)!.add(dep.depends_on_id);
 
-      if (!blocksMap.has(dep.depends_on_id)) {
-        blocksMap.set(dep.depends_on_id, new Set());
+        if (!blocksMap.has(dep.depends_on_id)) {
+          blocksMap.set(dep.depends_on_id, new Set());
+        }
+        blocksMap.get(dep.depends_on_id)!.add(dep.issue_id);
       }
-      blocksMap.get(dep.depends_on_id)!.add(dep.issue_id);
     }
+  }
+
+  // Build title lookup for epic display
+  const titleMap = new Map<string, string>();
+  for (const issue of issues) {
+    titleMap.set(issue.id, issue.title);
   }
 
   // Convert each BeadsIssue to PlanIssue
@@ -107,6 +119,9 @@ export function issuesToPlan(
     labels: issue.labels,
     blocked_by: Array.from(blockedByMap.get(issue.id) ?? []),
     blocks: Array.from(blocksMap.get(issue.id) ?? []),
+    story_points: issue.story_points,
+    epic: parentMap.get(issue.id),
+    epic_title: parentMap.has(issue.id) ? titleMap.get(parentMap.get(issue.id)!) : undefined,
     // impact_score not available without bv
   }));
 
