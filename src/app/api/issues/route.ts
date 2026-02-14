@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getPlan } from "@/lib/bv-client";
-import { getActiveProjectPath } from "@/lib/repo-config";
+import { getPlan, getAllProjectsPlan } from "@/lib/bv-client";
+import { getActiveProjectPath, getAllRepoPaths, ALL_PROJECTS_SENTINEL } from "@/lib/repo-config";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,6 +8,13 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const projectPath = await getActiveProjectPath();
+
+    if (projectPath === ALL_PROJECTS_SENTINEL) {
+      const paths = await getAllRepoPaths();
+      const data = await getAllProjectsPlan(paths);
+      return NextResponse.json(data);
+    }
+
     const data = await getPlan(projectPath);
     return NextResponse.json(data);
   } catch (error: unknown) {

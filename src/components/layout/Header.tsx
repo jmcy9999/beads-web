@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useRepos } from "@/hooks/useRepos";
+import { useRepos, useRepoMutation } from "@/hooks/useRepos";
 
 const PAGE_NAMES: Record<string, string> = {
   "/": "Dashboard",
@@ -11,15 +11,28 @@ const PAGE_NAMES: Record<string, string> = {
   "/settings": "Settings",
 };
 
+const ALL_PROJECTS_SENTINEL = "__all__";
+
 export function Header() {
   const pathname = usePathname();
   const { data: repoData } = useRepos();
+  const repoMutation = useRepoMutation();
   const pageName = PAGE_NAMES[pathname] ?? "Beads Web";
 
-  const hasMultipleRepos = (repoData?.repos.length ?? 0) >= 2;
-  const activeRepo = repoData?.repos.find(
-    (r) => r.path === repoData.activeRepo,
-  );
+  const repos = repoData?.repos ?? [];
+  const hasMultipleRepos = repos.length >= 2;
+  const activeValue = repoData?.activeRepo ?? repos[0]?.path ?? "";
+
+  function handleProjectChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+    repoMutation.mutateAsync({ action: "set-active", path: value });
+  }
+
+  // Derive display name for mobile view
+  const activeName =
+    activeValue === ALL_PROJECTS_SENTINEL
+      ? "All Projects"
+      : repos.find((r) => r.path === activeValue)?.name ?? "";
 
   return (
     <header className="flex items-center justify-between h-16 px-6 bg-surface-1 border-b border-border-default">
@@ -48,10 +61,31 @@ export function Header() {
         {/* Breadcrumb -- desktop */}
         <div className="hidden lg:flex items-center gap-2 text-sm">
           <span className="text-gray-500">Beads Web</span>
-          {hasMultipleRepos && activeRepo && (
+          {hasMultipleRepos && (
             <>
               <span className="text-gray-600">/</span>
-              <span className="text-gray-400">{activeRepo.name}</span>
+              <select
+                value={activeValue}
+                onChange={handleProjectChange}
+                disabled={repoMutation.isPending}
+                className="bg-transparent text-gray-400 text-sm border border-gray-700 rounded px-2 py-0.5 focus:outline-none focus:border-gray-500 hover:border-gray-500 transition-colors cursor-pointer appearance-none"
+                style={{ backgroundImage: "none" }}
+              >
+                <option value={ALL_PROJECTS_SENTINEL} className="bg-surface-1 text-gray-300">
+                  All Projects
+                </option>
+                {repos.map((repo) => (
+                  <option key={repo.path} value={repo.path} className="bg-surface-1 text-gray-300">
+                    {repo.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          {!hasMultipleRepos && repos[0] && (
+            <>
+              <span className="text-gray-600">/</span>
+              <span className="text-gray-400">{repos[0].name}</span>
             </>
           )}
           <span className="text-gray-600">/</span>
@@ -59,9 +93,14 @@ export function Header() {
         </div>
 
         {/* Page name -- mobile */}
-        <span className="lg:hidden text-white font-medium text-sm">
-          {pageName}
-        </span>
+        <div className="lg:hidden flex items-center gap-2">
+          {hasMultipleRepos && activeName && (
+            <span className="text-gray-500 text-xs">{activeName} /</span>
+          )}
+          <span className="text-white font-medium text-sm">
+            {pageName}
+          </span>
+        </div>
       </div>
 
       {/* Right: Refresh indicator */}

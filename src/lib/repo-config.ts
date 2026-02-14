@@ -56,12 +56,18 @@ export async function getRepos(): Promise<RepoStore> {
 }
 
 /**
+ * Sentinel value representing "all projects" aggregation mode.
+ */
+export const ALL_PROJECTS_SENTINEL = "__all__";
+
+/**
  * Get the currently active project path. Falls back to BEADS_PROJECT_PATH
- * if no active repo is set.
+ * if no active repo is set. Returns `"__all__"` when in aggregation mode.
  */
 export async function getActiveProjectPath(): Promise<string> {
   const store = await readConfig();
 
+  if (store.activeRepo === ALL_PROJECTS_SENTINEL) return ALL_PROJECTS_SENTINEL;
   if (store.activeRepo) return store.activeRepo;
   if (store.repos.length > 0) return store.repos[0].path;
   if (process.env.BEADS_PROJECT_PATH) return process.env.BEADS_PROJECT_PATH;
@@ -69,6 +75,14 @@ export async function getActiveProjectPath(): Promise<string> {
   throw new Error(
     "No repository configured. Set BEADS_PROJECT_PATH or add a repo via Settings.",
   );
+}
+
+/**
+ * Get all configured repo paths.
+ */
+export async function getAllRepoPaths(): Promise<string[]> {
+  const store = await readConfig();
+  return store.repos.map((r) => r.path);
 }
 
 /**
@@ -118,10 +132,18 @@ export async function removeRepo(repoPath: string): Promise<RepoStore> {
 }
 
 /**
- * Set the active repository.
+ * Set the active repository. Pass `"__all__"` to enable aggregation mode.
  */
 export async function setActiveRepo(repoPath: string): Promise<RepoStore> {
   const store = await readConfig();
+
+  // Allow the "all projects" sentinel without path resolution
+  if (repoPath === ALL_PROJECTS_SENTINEL) {
+    store.activeRepo = ALL_PROJECTS_SENTINEL;
+    await writeConfig(store);
+    return store;
+  }
+
   const resolvedPath = path.resolve(repoPath);
 
   if (!store.repos.some((r) => r.path === resolvedPath)) {

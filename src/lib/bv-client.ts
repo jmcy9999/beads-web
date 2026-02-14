@@ -794,6 +794,68 @@ export async function getDiff(since: string, projectPath?: string): Promise<Robo
 }
 
 /**
+ * Fetch and aggregate plans from multiple project paths into a single RobotPlan.
+ * Adds a `project:<repoName>` label to each issue for filtering.
+ */
+export async function getAllProjectsPlan(repoPaths: string[]): Promise<RobotPlan> {
+  const plans = await Promise.all(repoPaths.map((p) => getPlan(p)));
+
+  const allIssues: PlanIssue[] = [];
+  const allTracks: PlanTrack[] = [];
+  const summary: PlanSummary = {
+    open_count: 0,
+    in_progress_count: 0,
+    blocked_count: 0,
+    closed_count: 0,
+  };
+
+  let trackOffset = 0;
+  for (const plan of plans) {
+    const repoName = path.basename(plan.project_path);
+
+    // Add project label to each issue
+    for (const issue of plan.all_issues) {
+      const projectLabel = `project:${repoName}`;
+      const labels = issue.labels ? [...issue.labels] : [];
+      if (!labels.includes(projectLabel)) {
+        labels.push(projectLabel);
+      }
+      allIssues.push({ ...issue, labels });
+    }
+
+    // Renumber tracks to avoid collisions
+    for (const track of plan.tracks) {
+      allTracks.push({
+        ...track,
+        track_number: track.track_number + trackOffset,
+        label: track.label ? `[${repoName}] ${track.label}` : `[${repoName}]`,
+        issues: track.issues.map((issue) => {
+          const projectLabel = `project:${repoName}`;
+          const labels = issue.labels ? [...issue.labels] : [];
+          if (!labels.includes(projectLabel)) labels.push(projectLabel);
+          return { ...issue, labels };
+        }),
+      });
+    }
+    trackOffset += plan.tracks.length;
+
+    // Sum summary counts
+    summary.open_count += plan.summary.open_count;
+    summary.in_progress_count += plan.summary.in_progress_count;
+    summary.blocked_count += plan.summary.blocked_count;
+    summary.closed_count += plan.summary.closed_count;
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    project_path: "__all__",
+    summary,
+    tracks: allTracks,
+    all_issues: allIssues,
+  };
+}
+
+/**
  * Check whether the `bv` CLI is reachable by running `bv --version`.
  * Result is not cached since this is typically called once at startup.
  */

@@ -44,6 +44,7 @@ export function useRepoMutation() {
       queryClient.invalidateQueries({ queryKey: ["priority"] });
       queryClient.invalidateQueries({ queryKey: ["diff"] });
       queryClient.invalidateQueries({ queryKey: ["health"] });
+      queryClient.invalidateQueries({ queryKey: ["token-usage"] });
     },
   });
 }
