@@ -2,7 +2,11 @@
 
 ## Documentation Rule
 
-**MANDATORY:** Whenever you change features, APIs, data flows, file structure, or components in this project, you MUST update `ARCHITECTURE.md` in the same commit. The factory agent depends on this file to understand the system. If you add a new page, API route, hook, component, or lib module — update ARCHITECTURE.md. If you change how data flows or add a new pattern — update ARCHITECTURE.md.
+**MANDATORY:** Whenever you change features, APIs, data flows, file structure, or components in this project, you MUST update `ARCHITECTURE.md` in the same commit. The factory agent depends on this file to understand the system.
+- Add a new page, API route, hook, component, or lib module -> update the relevant section
+- Change how data flows or add a new pattern -> update Data Flow and Important Patterns
+- Add, remove, or change a user-facing feature -> update the **Features** section
+- Change the file structure -> update the File Structure tree
 
 ## Architecture
 
