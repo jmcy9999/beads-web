@@ -53,6 +53,11 @@ export function readIssuesFromDB(projectPath: string): BeadsIssue[] | null {
   try {
     db = new Database(dbPath, { readonly: true });
 
+    // Check which optional columns exist (schema varies across beads versions)
+    const columns = db.prepare("PRAGMA table_info(issues)").all() as { name: string }[];
+    const columnNames = new Set(columns.map((c) => c.name));
+    const hasStoryPoints = columnNames.has("story_points");
+
     // Read all non-deleted, non-tombstone issues
     const issueStmt = db.prepare(`
       SELECT
@@ -68,8 +73,8 @@ export function readIssuesFromDB(projectPath: string): BeadsIssue[] | null {
         i.created_by,
         i.updated_at,
         i.closed_at,
-        i.close_reason,
-        i.story_points
+        i.close_reason
+        ${hasStoryPoints ? ", i.story_points" : ""}
       FROM issues i
       LEFT JOIN labels l ON l.issue_id = i.id
       WHERE i.deleted_at IS NULL AND i.status <> 'tombstone'
