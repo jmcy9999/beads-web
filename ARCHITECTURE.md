@@ -8,6 +8,147 @@ A Next.js 14 dark-themed web dashboard for the **Beads** git-backed issue tracke
 
 **Tech stack:** Next.js 14, React 18, TanStack React Query 5, ReactFlow 11, better-sqlite3, Tailwind CSS 3, TypeScript 5.
 
+## Beads Data Model
+
+### Storage
+
+Each beads-enabled project has a `.beads/` directory containing:
+- **`beads.db`** — SQLite database (source of truth). Tables: `issues`, `labels`, `dependencies`, `comments`, `events`, `config`, `metadata`, and others.
+- **`issues.jsonl`** — JSON Lines export (one issue per line). Created by `bd sync`. May be stale — always prefer SQLite.
+- **`token-usage.jsonl`** — JSON Lines with per-session token/cost records.
+
+### Issue Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique ID with project prefix (e.g. `PatchCycle-9m2`, `beads-abc`) |
+| `title` | string | Short summary |
+| `description` | string? | Detailed description |
+| `status` | string | See statuses below |
+| `priority` | 0-4 | 0=critical, 1=high, 2=medium, 3=low, 4=backlog |
+| `issue_type` | string | `bug`, `feature`, `task`, `epic`, `chore` |
+| `owner` | string? | Assigned person/agent |
+| `labels` | string[]? | Arbitrary tags. Dashboard uses `project:<name>` for multi-repo filtering |
+| `story_points` | number? | Optional, not present in all beads DB versions |
+| `dependencies` | array? | See dependencies below |
+| `parent` | string? | Parent epic ID (from parent-child dependencies) |
+| `created_at` | ISO timestamp | |
+| `updated_at` | ISO timestamp | |
+| `closed_at` | ISO timestamp? | Set when status becomes `closed` |
+| `close_reason` | string? | Why it was closed |
+| `created_by` | string? | Who created it |
+
+### Statuses
+
+| Status | Meaning | Dashboard Display |
+|--------|---------|-------------------|
+| `open` | Ready to work | Green dot |
+| `in_progress` | Actively being worked | Amber dot |
+| `blocked` | Waiting on a dependency | Red dot |
+| `deferred` | Postponed | Purple dot |
+| `closed` | Done | Gray checkmark |
+| `pinned` | Permanently visible | Blue pin |
+
+### Dependencies
+
+Stored in the `dependencies` table / `dependencies[]` array on each issue:
+
+```json
+{
+  "issue_id": "app-123",       // this issue...
+  "depends_on_id": "app-456",  // ...depends on this one
+  "type": "blocks",            // or "parent-child" for epic membership
+  "created_at": "...",
+  "created_by": "..."
+}
+```
+
+- **`blocks` type:** `depends_on_id` blocks `issue_id`. Issue can't proceed until dependency is resolved.
+- **`parent-child` type:** `depends_on_id` is the parent epic, `issue_id` is a child task.
+
+The dashboard computes two derived fields per issue:
+- `blocked_by[]` — all issues this one depends on
+- `blocks[]` — all issues that depend on this one
+
+### Token Usage Records
+
+Each line in `token-usage.jsonl`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | ISO timestamp | When the session ended |
+| `session_id` | string | Claude session ID |
+| `issue_id` | string | Which beads issue this work was for |
+| `project` | string | Project name |
+| `model` | string | Model used (e.g. `claude-sonnet-4-5-20250929`) |
+| `input_tokens` | number | |
+| `output_tokens` | number | |
+| `cache_read_tokens` | number | |
+| `cache_creation_tokens` | number | |
+| `total_cost_usd` | number | |
+| `duration_ms` | number | Session duration |
+| `num_turns` | number | Agent turns in session |
+
+### How the Dashboard Reads Beads
+
+1. `sqlite-reader.ts` opens `.beads/beads.db` in readonly mode. Uses `PRAGMA table_info` to detect which columns exist (handles schema differences across beads versions).
+2. If SQLite fails or DB is missing, falls back to parsing `.beads/issues.jsonl` line by line.
+3. `bv-client.ts` tries the `bv` CLI first (richer graph analytics), falls back to the SQLite/JSONL path.
+4. Issues are converted to `PlanIssue` objects with resolved dependency cross-references, epic associations, and `project:` labels.
+5. API routes serve this data as JSON. React hooks poll every 30-60 seconds.
+
+### Creating Beads for Different Workflows
+
+Use the `bd` CLI to create issues. The dashboard will pick them up automatically.
+
+**App builds:**
+```bash
+bd create --title="Build MyApp v1.0" --type=epic --priority=1
+bd create --title="Set up Xcode project" --type=task --priority=1
+bd create --title="Implement core UI" --type=feature --priority=1
+bd create --title="Add CycleKit integration" --type=task --priority=2
+bd dep add <ui-task> <setup-task>  # UI depends on project setup
+```
+
+**Research phases:**
+```bash
+bd create --title="Investigate auth approaches" --type=task --priority=2
+bd create --title="Evaluate SwiftData vs CoreData" --type=task --priority=2
+# Close with findings as the close_reason
+bd close <id> --reason="SwiftData chosen - simpler API, sufficient for our needs"
+```
+
+**Kit enhancements (CycleKit, etc.):**
+```bash
+bd create --title="Add hormone level tracking to CycleKit" --type=feature --priority=2
+bd create --title="Write tests for hormone tracking" --type=task --priority=2
+bd dep add <tests-id> <feature-id>  # Tests depend on feature
+```
+
+**Bootstrap tasks (new project setup):**
+```bash
+bd create --title="Initialize project from template" --type=task --priority=1
+bd create --title="Configure CI/CD" --type=chore --priority=2
+bd create --title="Register with beads_web dashboard" --type=chore --priority=3
+```
+
+**Registering a new project with the dashboard:**
+```bash
+# From within the new project directory (must have .beads/ already):
+curl -X POST http://localhost:3000/api/repos \
+  -H "Content-Type: application/json" \
+  -d '{"action": "add", "path": "/absolute/path/to/project", "name": "MyApp"}'
+```
+
+Or add it directly to `~/.beads-web.json`:
+```json
+{
+  "repos": [
+    { "name": "MyApp", "path": "/absolute/path/to/project" }
+  ]
+}
+```
+
 ## Features
 
 ### Issue Tracking Dashboard
