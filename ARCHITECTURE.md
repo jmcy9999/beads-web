@@ -8,6 +8,75 @@ A Next.js 14 dark-themed web dashboard for the **Beads** git-backed issue tracke
 
 **Tech stack:** Next.js 14, React 18, TanStack React Query 5, ReactFlow 11, better-sqlite3, Tailwind CSS 3, TypeScript 5.
 
+## Features
+
+### Issue Tracking Dashboard
+- Full issue table with sort by 9 columns (id, project, title, status, priority, owner, epic, blockers, cost)
+- Status summary cards (total, open, in_progress, blocked, closed)
+- Highest-impact issue highlight ("What's Next")
+- Recent activity feed (new/closed/modified/reopened from git diff)
+- Mobile-responsive: table on desktop, card grid on mobile
+
+### Kanban Board
+- Columns by status: open, in_progress, blocked, closed
+- Sorted by priority within each column
+- Click-to-open slide-in detail panel with full issue info and dependencies
+
+### Graph Analytics (Insights)
+- Bottlenecks (betweenness centrality) — issues that are gateway dependencies
+- Keystones (critical path impact) — issues that transitively unblock the most work
+- Influencers (eigenvector centrality) — most connected issues
+- Hubs/Authorities (HITS algorithm) — issues that depend on many vs are depended on by many
+- Dependency cycle detection (Tarjan's SCC)
+- Graph density metric with color-coded badge
+- Interactive dependency graph (ReactFlow) with status-colored nodes and cycle-highlighted edges
+
+### Time Travel Diff
+- Compare current issue state against any git ref (HEAD~1, HEAD~5, HEAD~10, HEAD~20, or custom)
+- Shows new/closed/modified/reopened issue counts
+- Field-level diffs (what changed on modified issues)
+- Density delta and cycle change tracking
+
+### Multi-Project Support
+- Switch between beads-enabled repos via header dropdown
+- "All Projects" aggregation mode merges issues across all repos
+- Issues labeled with `project:<repoName>` for filtering
+- Token usage aggregated across projects
+- Config stored in `~/.beads-web.json`
+
+### Filtering & Saved Views
+- Filter by: status, priority, type, owner, labels, project, epic, has blockers, is stale, is recent, search text
+- Built-in views: All Issues, Actionable, In Progress, Blocked, High Priority, Bugs
+- Save custom filter combinations as named views (localStorage)
+
+### Token Usage Tracking
+- Dashboard summary: total tokens, total cost, session count, total turns
+- Per-issue detail: sessions table with model, tokens, cost, duration, turns
+- Reads from `.beads/token-usage.jsonl`
+
+### Priority Intelligence
+- Detects misaligned priorities (current vs recommended based on graph position)
+- Shows confidence score and reason for each recommendation
+- Up to 3 alerts on dashboard
+
+### Issue Detail Page
+- Full description, status, priority, owner, labels, type
+- Dependency tree: blocked by / unblocks (with titles resolved)
+- Epic association
+- Token usage sessions table
+- Timestamps (created, updated, closed) and close reason
+
+### System Health & Setup
+- Health check: bv CLI availability, project path validity
+- Setup wizard for first-time users (prerequisites check, add first repo)
+- Keyboard shortcuts: d(ashboard), b(oard), i(nsights), t(ime travel), s(ettings), /(search), ?(help)
+- Live indicator with auto-polling (30s issues, 60s insights/tokens)
+
+### Graceful Degradation
+- Works without `bv` CLI installed (falls back to SQLite/JSONL for basic data)
+- Schema-tolerant SQLite reader (handles different beads DB versions)
+- Graph metrics computed locally when bv unavailable (approximate but functional)
+
 ## Data Flow
 
 ```
