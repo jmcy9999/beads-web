@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execFile as execFileCb } from "child_process";
 import { promisify } from "util";
-import { getActiveProjectPath } from "@/lib/repo-config";
+import { findRepoForIssue, getActiveProjectPath, ALL_PROJECTS_SENTINEL } from "@/lib/repo-config";
 import { invalidateCache } from "@/lib/bv-client";
 
 const execFile = promisify(execFileCb);
@@ -66,7 +66,24 @@ export async function POST(
   }
 
   try {
-    const projectPath = await getActiveProjectPath();
+    // Resolve the correct project for this issue.
+    // In __all__ mode (or any mode), look up which DB contains the issue.
+    let projectPath = await getActiveProjectPath();
+    if (projectPath === ALL_PROJECTS_SENTINEL) {
+      const resolved = await findRepoForIssue(issueId);
+      if (!resolved) {
+        return NextResponse.json(
+          { error: `Issue ${issueId} not found in any configured repo` },
+          { status: 404 },
+        );
+      }
+      projectPath = resolved;
+    } else {
+      // Even in single-project mode, verify the issue lives here;
+      // if not, search all repos as a fallback.
+      const resolved = await findRepoForIssue(issueId);
+      if (resolved) projectPath = resolved;
+    }
 
     await execFile("bd", args, {
       cwd: projectPath,

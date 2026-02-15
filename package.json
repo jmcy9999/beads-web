@@ -9,8 +9,7 @@
     "lint": "next lint",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "postinstall": "bash scripts/install-bv.sh || true",
-    "sync-hub": "bash scripts/sync-hub.sh"
+    "postinstall": "bash scripts/install-bv.sh || true"
   },
   "dependencies": {
     "@beads/bd": "^0.49.6",

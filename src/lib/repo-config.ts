@@ -8,8 +8,10 @@
 // =============================================================================
 
 import { promises as fs } from "fs";
+import { existsSync } from "fs";
 import path from "path";
 import os from "os";
+import Database from "better-sqlite3";
 
 export interface RepoConfig {
   name: string;
@@ -129,6 +131,31 @@ export async function removeRepo(repoPath: string): Promise<RepoStore> {
 
   await writeConfig(store);
   return store;
+}
+
+/**
+ * Find which repo an issue belongs to by checking each configured repo's
+ * SQLite DB for a matching issue ID. Returns the repo path, or null if
+ * no repo contains the issue.
+ */
+export async function findRepoForIssue(issueId: string): Promise<string | null> {
+  const store = await readConfig();
+  for (const repo of store.repos) {
+    const dbPath = path.join(repo.path, ".beads", "beads.db");
+    if (!existsSync(dbPath)) continue;
+
+    let db: Database.Database | null = null;
+    try {
+      db = new Database(dbPath, { readonly: true });
+      const row = db.prepare("SELECT 1 FROM issues WHERE id = ?").get(issueId);
+      if (row) return repo.path;
+    } catch {
+      // DB unreadable — skip
+    } finally {
+      if (db) db.close();
+    }
+  }
+  return null;
 }
 
 /**

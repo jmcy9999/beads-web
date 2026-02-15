@@ -245,7 +245,9 @@ bv CLI (--robot-plan/insights/priority/diff)                            │
 
 **Fallback chain:** bv CLI -> SQLite DB -> JSONL file -> empty response. The app works without `bv` installed.
 
-**Multi-repo aggregation:** When `activeRepo === "__all__"`, API routes fetch each repo's data in parallel, merge results, and add `project:<repoName>` labels for filtering.
+**Multi-repo aggregation:** When `activeRepo === "__all__"`, API routes fetch each repo's data in parallel directly from each project's `.beads/beads.db`, merge results, and add `project:<repoName>` labels for filtering. There is no hub or intermediary database — every read goes to the real project DB.
+
+**Issue mutations:** The action route (`POST /api/issues/[id]/action`) uses `findRepoForIssue()` to resolve which project DB contains the issue, then runs `bd` in that project directory. This works in both single-project and `__all__` aggregation mode.
 
 ## Pages
 
@@ -298,7 +300,9 @@ Reads `.beads/beads.db` via `better-sqlite3` (readonly). Dynamically detects opt
 Computes approximate graph metrics when bv unavailable: betweenness centrality (bottlenecks), transitive unblock count (keystones), degree centrality (hubs/authorities/influencers), Tarjan's SCC (cycles).
 
 ### `src/lib/repo-config.ts`
-Manages `~/.beads-web.json`. `ALL_PROJECTS_SENTINEL = "__all__"` enables aggregation mode. Exports: `getActiveProjectPath()`, `getAllRepoPaths()`, `addRepo()`, `removeRepo()`, `setActiveRepo()`, `getRepos()`.
+Manages `~/.beads-web.json`. `ALL_PROJECTS_SENTINEL = "__all__"` enables aggregation mode. Exports: `getActiveProjectPath()`, `getAllRepoPaths()`, `addRepo()`, `removeRepo()`, `setActiveRepo()`, `getRepos()`, `findRepoForIssue()`.
+
+- **`findRepoForIssue(issueId)`** — Resolves which repo an issue belongs to by checking each configured repo's SQLite DB. Used by the action route to run `bd` in the correct project directory, even in `__all__` aggregation mode.
 
 ### `src/lib/recipes.ts`
 Filter engine. `FilterCriteria` supports: statuses, priorities, types, owner, labels, projects, epic, hasBlockers, isStale, isRecent, search text. Built-in views: All Issues, Actionable, In Progress, Blocked, High Priority, Bugs. Custom views saved to localStorage.
@@ -383,7 +387,7 @@ Dark mode with 4-tier surface palette:
 
 1. **Schema tolerance:** SQLite reader checks which columns exist via `PRAGMA table_info` before querying. Different beads versions have different schemas (e.g. `story_points` is optional).
 2. **Graceful degradation:** Every data path has a fallback chain. Never crashes on missing data.
-3. **Security:** CLI calls use `execFile` (not `exec`). Diff `since` param validated against safe regex. Issue mutations go through `bd` CLI (validated issue ID + action).
+3. **Security:** CLI calls use `execFile` (not `exec`). Diff `since` param validated against safe regex. Issue mutations go through `bd` CLI (validated issue ID + action). Mutations resolve the correct project via `findRepoForIssue()` so they always target the real project DB.
 4. **Cache invalidation:** bv-client has 10s server TTL. React Query has 15s stale time + polling. Repo switch invalidates everything.
 
 ## Claude Code Hooks
@@ -472,5 +476,4 @@ scripts/
     beads-session-start.sh    # SessionStart hook: issue attribution setup
     beads-track-issue.sh      # PostToolUse hook: mid-session issue tracking
   install-bv.sh               # Install bv CLI
-  sync-hub.sh                 # Sync issues across repos into projects_master hub
 ```
