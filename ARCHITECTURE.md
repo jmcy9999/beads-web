@@ -250,6 +250,14 @@ Or add it directly to `~/.beads-web.json`:
 - **Factory use case:** Agent polls `GET /api/signals?since=<last-check>&label=research` to detect when research tasks close, then prompts Jane for review
 - **Multi-repo:** Supports `__all__` aggregation mode — merges signals across all projects
 
+### Auto-Registration (Watch Directories)
+- **Watch directories:** Configure parent directories in Settings. The dashboard scans each for subdirectories containing `.beads/` and auto-registers new projects.
+- **Auto-scan on load:** `GET /api/repos` automatically runs `scanWatchDirs()` on every call, so new projects appear as soon as you refresh.
+- **Manual scan:** "Scan Now" button in Settings triggers an immediate scan and reports newly found projects.
+- **API actions:** `POST /api/repos` supports `scan` (trigger scan) and `set-watch-dirs` (set watch directory list) actions.
+- **Config:** `watchDirs` array stored in `~/.beads-web.json` alongside `repos` and `activeRepo`.
+- **Factory use case:** Factory sets a watch directory (e.g., `~/dev/apps/`) and every new app project created by the factory auto-appears in the dashboard.
+
 ### System Health & Setup
 - Health check: bv CLI availability, project path validity
 - Setup wizard for first-time users (prerequisites check, add first repo)
@@ -315,7 +323,7 @@ bv CLI (--robot-plan/insights/priority/diff)                            │
 | `/api/diff?since=REF` | GET | `RobotDiff` (changes[]) | Git ref validated against safe pattern |
 | `/api/health` | GET | `{ bv_available, project_path, project_valid }` | System health check |
 | `/api/repos` | GET | `RepoStore` (repos[], activeRepo) | Repo config |
-| `/api/repos` | POST | `RepoStore` | Body: `{ action: "add"\|"remove"\|"set-active", path, name? }` |
+| `/api/repos` | POST | `RepoStore` | Actions: `add`, `remove`, `set-active` (path required); `scan` (trigger watch dir scan); `set-watch-dirs` (dirs[] required) |
 | `/api/token-usage` | GET | `TokenUsageRecord[]` or summary | Params: `summary=true`, `issue_id=X`. Supports `__all__` |
 | `/api/signals` | GET | `{ signals[], count, since }` | Params: `since` (required), `label`, `status`, `field`. Polling for state changes. Supports `__all__` |
 

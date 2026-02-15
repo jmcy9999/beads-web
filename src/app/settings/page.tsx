@@ -25,6 +25,8 @@ export default function SettingsPage() {
 
   const [addPath, setAddPath] = useState("");
   const [addName, setAddName] = useState("");
+  const [watchDirInput, setWatchDirInput] = useState("");
+  const [scanResult, setScanResult] = useState<string[] | null>(null);
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -198,6 +200,119 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+      </section>
+
+      {/* Watch Directories Section */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-100">Watch Directories</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Directories to scan for new Beads-enabled projects. The dashboard
+            auto-discovers projects containing a <code className="text-gray-400">.beads/</code> directory.
+          </p>
+        </div>
+
+        {/* Current watch dirs */}
+        {(() => {
+          const watchDirs: string[] = ((data as unknown as { watchDirs?: string[] })?.watchDirs) ?? [];
+          return watchDirs.length > 0 ? (
+            <div className="space-y-2">
+              {watchDirs.map((dir) => (
+                <div
+                  key={dir}
+                  className="card p-3 flex items-center gap-3"
+                >
+                  <svg className="w-4 h-4 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+                  </svg>
+                  <span className="flex-1 text-sm font-mono text-gray-300 truncate">{dir}</span>
+                  <button
+                    onClick={() => {
+                      mutation.mutate({ action: "set-watch-dirs", dirs: watchDirs.filter((d) => d !== dir) });
+                    }}
+                    disabled={mutation.isPending}
+                    className="px-2 py-1 text-xs text-gray-500 hover:text-red-400 bg-surface-2 hover:bg-red-500/10 border border-border-default hover:border-red-500/30 rounded-md transition-colors disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="card p-4 text-center">
+              <p className="text-sm text-gray-400">No watch directories configured.</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Add a parent directory below. Any subdirectory with <code className="text-gray-400">.beads/</code> will be auto-registered.
+              </p>
+            </div>
+          );
+        })()}
+
+        {/* Add watch dir */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!watchDirInput.trim()) return;
+            const watchDirs: string[] = ((data as unknown as { watchDirs?: string[] })?.watchDirs) ?? [];
+            mutation.mutate(
+              { action: "set-watch-dirs", dirs: [...watchDirs, watchDirInput.trim()] },
+              { onSuccess: () => setWatchDirInput("") },
+            );
+          }}
+          className="flex gap-3 items-end"
+        >
+          <div className="flex-1 space-y-1.5">
+            <label htmlFor="watch-dir" className="block text-xs font-medium text-gray-400">
+              Watch Directory
+            </label>
+            <input
+              id="watch-dir"
+              type="text"
+              value={watchDirInput}
+              onChange={(e) => setWatchDirInput(e.target.value)}
+              placeholder="/path/to/parent/directory"
+              className="w-full px-3 py-2 text-sm rounded-md font-mono bg-surface-0 border border-border-default text-gray-100 placeholder-gray-600 focus:outline-none focus:border-status-open/50 focus:ring-1 focus:ring-status-open/30 transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!watchDirInput.trim() || mutation.isPending}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-status-open/15 text-status-open border border-status-open/30 hover:bg-status-open/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Add
+          </button>
+        </form>
+
+        {/* Manual scan button */}
+        <button
+          onClick={() => {
+            mutation.mutate(
+              { action: "scan" },
+              {
+                onSuccess: (resp) => {
+                  const result = resp as unknown as { newlyRegistered?: string[] };
+                  setScanResult(result.newlyRegistered ?? []);
+                  setTimeout(() => setScanResult(null), 5000);
+                },
+              },
+            );
+          }}
+          disabled={mutation.isPending}
+          className="px-4 py-2 text-sm font-medium rounded-md text-gray-400 hover:text-white bg-surface-2 hover:bg-surface-3 border border-border-default transition-colors disabled:opacity-50"
+        >
+          {mutation.isPending ? "Scanning..." : "Scan Now"}
+        </button>
+
+        {scanResult !== null && (
+          <div className="rounded-lg border border-status-open/30 bg-status-open/5 px-4 py-3">
+            <p className="text-sm text-gray-300">
+              {scanResult.length === 0
+                ? "No new projects found."
+                : `Found ${scanResult.length} new project${scanResult.length > 1 ? "s" : ""}: ${scanResult.map((p) => p.split("/").pop()).join(", ")}`}
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );

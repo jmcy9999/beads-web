@@ -21,6 +21,7 @@ export interface RepoConfig {
 export interface RepoStore {
   repos: RepoConfig[];
   activeRepo?: string; // path of the currently active repo
+  watchDirs?: string[]; // directories to scan for new .beads/ projects
 }
 
 const CONFIG_PATH = path.join(os.homedir(), ".beads-web.json");
@@ -180,4 +181,79 @@ export async function setActiveRepo(repoPath: string): Promise<RepoStore> {
   store.activeRepo = resolvedPath;
   await writeConfig(store);
   return store;
+}
+
+// ---------------------------------------------------------------------------
+// Watch directories — auto-discover new beads projects
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the configured watch directories.
+ */
+export async function getWatchDirs(): Promise<string[]> {
+  const store = await readConfig();
+  return store.watchDirs ?? [];
+}
+
+/**
+ * Set watch directories (overwrites existing list).
+ */
+export async function setWatchDirs(dirs: string[]): Promise<RepoStore> {
+  const store = await readConfig();
+  store.watchDirs = dirs.map((d) => path.resolve(d));
+  await writeConfig(store);
+  return store;
+}
+
+/**
+ * Scan watch directories for new beads-enabled projects (directories
+ * containing a `.beads/` subdirectory). Auto-registers any newly found
+ * projects. Returns the list of newly added project paths.
+ *
+ * Only scans one level deep within each watch directory.
+ */
+export async function scanWatchDirs(): Promise<string[]> {
+  const store = await readConfig();
+  const watchDirs = store.watchDirs ?? [];
+  if (watchDirs.length === 0) return [];
+
+  const existingPaths = new Set(store.repos.map((r) => r.path));
+  const newPaths: string[] = [];
+
+  for (const dir of watchDirs) {
+    let entries: string[];
+    try {
+      const dirents = await fs.readdir(dir, { withFileTypes: true });
+      entries = dirents
+        .filter((d) => d.isDirectory())
+        .map((d) => path.join(dir, d.name));
+    } catch {
+      // Watch dir doesn't exist or isn't readable — skip
+      continue;
+    }
+
+    for (const candidate of entries) {
+      if (existingPaths.has(candidate)) continue;
+
+      // Check if this directory has .beads/
+      const beadsDir = path.join(candidate, ".beads");
+      try {
+        await fs.access(beadsDir);
+      } catch {
+        continue;
+      }
+
+      // New beads project found — register it
+      const name = path.basename(candidate);
+      store.repos.push({ name, path: candidate });
+      existingPaths.add(candidate);
+      newPaths.push(candidate);
+    }
+  }
+
+  if (newPaths.length > 0) {
+    await writeConfig(store);
+  }
+
+  return newPaths;
 }

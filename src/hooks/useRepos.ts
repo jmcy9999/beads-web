@@ -21,9 +21,10 @@ export function useRepoMutation() {
 
   return useMutation({
     mutationFn: async (body: {
-      action: "add" | "remove" | "set-active";
-      path: string;
+      action: "add" | "remove" | "set-active" | "scan" | "set-watch-dirs";
+      path?: string;
       name?: string;
+      dirs?: string[];
     }) => {
       const res = await fetch("/api/repos", {
         method: "POST",
