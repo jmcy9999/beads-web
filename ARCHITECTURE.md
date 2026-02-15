@@ -258,6 +258,18 @@ Or add it directly to `~/.beads-web.json`:
 - **Config:** `watchDirs` array stored in `~/.beads-web.json` alongside `repos` and `activeRepo`.
 - **Factory use case:** Factory sets a watch directory (e.g., `~/dev/apps/`) and every new app project created by the factory auto-appears in the dashboard.
 
+### Agent Activity Timeline
+- **Visual timeline:** Sessions displayed as horizontal color-coded bars on a time axis, grouped by day
+- **Day groups:** Each day shows a bar chart of sessions with time axis, plus a session list with issue links, duration, tokens, and cost
+- **Color coding:** Sessions colored by issue phase — research (blue), development (amber), submission (purple), epic (green), other (cyan)
+- **Tooltips:** Hovering over a timeline bar shows session details: issue, time range, duration, tokens, cost, turns, model
+- **Summary stats:** Total sessions, duration, tokens, cost, and unique issues across the timeline
+- **Fleet page:** Full timeline below the pipeline board, showing all agent activity across all issues
+- **Issue detail page:** Per-issue timeline showing all sessions that worked on that specific issue
+- **Data source:** `TokenUsageRecord[]` from `useTokenUsage()` — each record has `timestamp` (session end), `duration_ms` (used to compute start time), `session_id`, `issue_id`, `total_cost_usd`, token counts, and `model`
+- **Utilities:** `timeline-utils.ts` provides pure functions: `buildTimelineEntries()`, `groupByDay()`, `formatDuration()`, `formatTokens()`, `computeBarPosition()`, `getEntryColor()`
+- **Expandable:** Shows most recent 5-7 days by default with "Show more" to expand
+
 ### System Health & Setup
 - Health check: bv CLI availability, project path validity
 - Setup wizard for first-time users (prerequisites check, add first repo)
@@ -403,7 +415,7 @@ layout.tsx (server)
 ### Key Components
 - **Dashboard:** `SummaryCards`, `TokenUsageSummary`, `WhatsNext`, `PriorityAlerts`, `IssueTable` (with `FilterBar`), `ActivityFeed`
 - **Board:** `KanbanBoard` -> `KanbanColumn` -> `IssueCard`, `IssueDetailPanel` (slide-in)
-- **Fleet:** `FleetBoard` -> `FleetColumn` -> `FleetCard`, `fleet-utils.ts` (stage detection + data extraction)
+- **Fleet:** `FleetBoard` -> `FleetColumn` -> `FleetCard`, `ActivityTimeline` (agent session visualization), `fleet-utils.ts` (stage detection + data extraction), `timeline-utils.ts` (timeline data processing)
 - **Insights:** `MetricPanel` (bar charts), `CyclesPanel`, `GraphDensityBadge`, `DependencyGraph` (ReactFlow)
 - **Filters:** `FilterBar`, `RecipeSelector`
 - **UI primitives:** `StatusBadge`, `PriorityIndicator`, `IssueTypeIcon`, `SummaryCard`, `IssueCard` (row/card variants), `EmptyState`, `ErrorState`, `LoadingSkeleton`
@@ -522,7 +534,7 @@ src/
     layout/                 # Sidebar, Header
     dashboard/              # SummaryCards, WhatsNext, PriorityAlerts, IssueTable, ActivityFeed, TokenUsageSummary
     board/                  # KanbanBoard, KanbanColumn, IssueDetailPanel
-    fleet/                  # FleetBoard, FleetColumn, FleetCard, fleet-utils
+    fleet/                  # FleetBoard, FleetColumn, FleetCard, ActivityTimeline, fleet-utils, timeline-utils
     insights/               # MetricPanel, CyclesPanel, GraphDensityBadge, DependencyGraph
     filters/                # FilterBar, RecipeSelector
     ui/                     # StatusBadge, PriorityIndicator, IssueTypeIcon, SummaryCard, IssueCard, EmptyState, ErrorState, LoadingSkeleton, ErrorBoundary, ShortcutsHelp, SetupWizard

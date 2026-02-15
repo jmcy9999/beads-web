@@ -2,15 +2,17 @@
 
 import { useMemo } from "react";
 import { FleetBoard } from "@/components/fleet/FleetBoard";
+import { ActivityTimeline } from "@/components/fleet/ActivityTimeline";
 import { buildFleetApps, computeEpicCosts } from "@/components/fleet/fleet-utils";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { useIssues } from "@/hooks/useIssues";
-import { useTokenUsageSummary } from "@/hooks/useTokenUsage";
+import { useTokenUsage, useTokenUsageSummary } from "@/hooks/useTokenUsage";
 
 export default function FleetPage() {
   const { data, isLoading, error, refetch } = useIssues();
   const { data: tokenData } = useTokenUsageSummary();
+  const { data: tokenRecords } = useTokenUsage();
 
   const allIssues = useMemo(() => data?.all_issues ?? [], [data]);
   const epicCount = useMemo(
@@ -30,6 +32,14 @@ export default function FleetPage() {
     for (const cost of epicCosts.values()) sum += cost.totalCost;
     return sum;
   }, [epicCosts]);
+
+  const issueMap = useMemo(() => {
+    const map: Record<string, import("@/lib/types").PlanIssue> = {};
+    for (const issue of allIssues) {
+      map[issue.id] = issue;
+    }
+    return map;
+  }, [allIssues]);
 
   return (
     <div className="flex flex-col h-full">
@@ -79,6 +89,20 @@ export default function FleetPage() {
       )}
 
       {data && <FleetBoard issues={allIssues} epicCosts={epicCosts} />}
+
+      {/* Agent Activity Timeline */}
+      {tokenRecords && tokenRecords.length > 0 && (
+        <section className="mt-6 card p-5">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-4">
+            Agent Activity Timeline
+          </h2>
+          <ActivityTimeline
+            records={tokenRecords}
+            issueMap={issueMap}
+            initialDays={5}
+          />
+        </section>
+      )}
 
       {data && epicCount === 0 && (
         <div className="flex-1 flex items-center justify-center">
