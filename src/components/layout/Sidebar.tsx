@@ -133,8 +133,9 @@ function RepoSelector() {
 
   if (!data || data.repos.length < 2) return null;
 
+  const isAllProjects = data.activeRepo === "__all__";
   const activeRepo = data.repos.find((r) => r.path === data.activeRepo);
-  const activeLabel = activeRepo?.name ?? "Select repo";
+  const activeLabel = isAllProjects ? "All Projects" : activeRepo?.name ?? "Select repo";
 
   return (
     <div className="px-3 py-3 border-b border-border-default" ref={dropdownRef}>
@@ -173,6 +174,35 @@ function RepoSelector() {
 
       {open && (
         <div className="mt-1 py-1 rounded-md bg-surface-0 border border-border-default shadow-lg">
+          {/* All Projects aggregation option */}
+          <button
+            onClick={() => {
+              if (!isAllProjects) {
+                mutation.mutate({ action: "set-active", path: "__all__" });
+              }
+              setOpen(false);
+            }}
+            className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2
+              ${
+                isAllProjects
+                  ? "text-status-open bg-status-open/5"
+                  : "text-gray-300 hover:text-white hover:bg-surface-2"
+              }`}
+          >
+            <span className="truncate flex-1">All Projects</span>
+            {isAllProjects && (
+              <svg
+                className="w-4 h-4 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+          <div className="border-b border-border-default my-1" />
           {data.repos.map((repo) => {
             const isActive = repo.path === data.activeRepo;
             return (
