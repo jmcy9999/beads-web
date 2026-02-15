@@ -165,6 +165,7 @@ export function IssueTable({ issues }: IssueTableProps) {
                 issue={issue}
                 variant="row"
                 tokenCost={tokenSummary?.byIssue?.[issue.id]?.total_cost_usd}
+                allIssues={issues}
               />
             ))}
           </tbody>
@@ -184,6 +185,7 @@ export function IssueTable({ issues }: IssueTableProps) {
             issue={issue}
             variant="card"
             tokenCost={tokenSummary?.byIssue?.[issue.id]?.total_cost_usd}
+            allIssues={issues}
           />
         ))}
         {sortedIssues.length === 0 && (

@@ -362,6 +362,18 @@ export default function IssueDetailPage() {
             )}
           </section>
 
+          {/* Notes (research reports, etc.) */}
+          {rawIssue?.notes && (
+            <section className="card p-5">
+              <h2 className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-3">
+                Notes
+              </h2>
+              <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                {rawIssue.notes}
+              </p>
+            </section>
+          )}
+
           {/* Dependency Tree */}
           <section className="card p-5 space-y-5">
             <h2 className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-1">
@@ -377,13 +389,39 @@ export default function IssueDetailPage() {
               resolvedIssues={unblocksResolved}
               unresolvedIds={unblocksUnresolved}
             />
-            {epicChildren.length > 0 && (
-              <DependencyList
-                label={`Children (${epicChildren.length})`}
-                resolvedIssues={epicChildren}
-                unresolvedIds={[]}
-              />
-            )}
+            {epicChildren.length > 0 && (() => {
+              const closedCount = epicChildren.filter((c) => c.status === "closed").length;
+              const pct = Math.round((closedCount / epicChildren.length) * 100);
+              return (
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                      Children ({closedCount}/{epicChildren.length} — {pct}%)
+                    </h3>
+                    <div className="flex-1 max-w-[200px] h-2 bg-surface-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {epicChildren.map((dep) => (
+                      <li key={dep.id} className="flex items-center gap-2 text-sm">
+                        <Link
+                          href={`/issue/${dep.id}`}
+                          className="font-mono text-xs text-blue-400 hover:text-blue-300 hover:underline shrink-0"
+                        >
+                          {dep.id}
+                        </Link>
+                        <span className="text-gray-300 truncate">{dep.title}</span>
+                        <StatusBadge status={dep.status} size="sm" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
           </section>
 
           {/* Token Usage */}

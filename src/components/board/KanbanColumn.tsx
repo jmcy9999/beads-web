@@ -4,6 +4,7 @@ import { STATUS_CONFIG, type IssueStatus, type PlanIssue } from "@/lib/types";
 interface KanbanColumnProps {
   status: IssueStatus;
   issues: PlanIssue[];
+  allIssues: PlanIssue[];
   onSelectIssue: (id: string) => void;
 }
 
@@ -20,6 +21,7 @@ const DOT_COLOR: Record<IssueStatus, string> = {
 export function KanbanColumn({
   status,
   issues,
+  allIssues,
   onSelectIssue,
 }: KanbanColumnProps) {
   const config = STATUS_CONFIG[status];
@@ -49,6 +51,7 @@ export function KanbanColumn({
               issue={issue}
               variant="card"
               onClick={onSelectIssue}
+              allIssues={allIssues}
             />
           ))
         )}

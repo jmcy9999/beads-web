@@ -48,6 +48,7 @@ export function KanbanBoard({ issues, onSelectIssue }: KanbanBoardProps) {
           key={status}
           status={status}
           issues={grouped.get(status) ?? []}
+          allIssues={issues}
           onSelectIssue={onSelectIssue}
         />
       ))}

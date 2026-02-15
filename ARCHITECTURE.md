@@ -37,6 +37,7 @@ Each beads-enabled project has a `.beads/` directory containing:
 | `closed_at` | ISO timestamp? | Set when status becomes `closed` |
 | `close_reason` | string? | Why it was closed |
 | `created_by` | string? | Who created it |
+| `notes` | string? | Research reports, extended notes. Optional, detected via PRAGMA |
 
 ### Statuses
 
@@ -186,8 +187,9 @@ Or add it directly to `~/.beads-web.json`:
 - Config stored in `~/.beads-web.json`
 
 ### Filtering & Saved Views
-- Filter by: status, priority, type, owner, labels, project, epic, has blockers, is stale, is recent, search text
-- Built-in views: All Issues, Actionable, In Progress, Blocked, High Priority, Bugs
+- Filter by: status, priority, type, owner, labels, label prefix, project, epic, has blockers, is stale, is recent, search text
+- Built-in views: All Issues, Actionable, In Progress, Blocked, High Priority, Bugs, **Submissions**
+- **Submissions view:** Filters issues with `submission:*` labels (ready, in-review, approved, rejected)
 - Save custom filter combinations as named views (localStorage)
 
 ### Token Usage Tracking
@@ -202,12 +204,26 @@ Or add it directly to `~/.beads-web.json`:
 
 ### Issue Detail Page
 - Full description, status, priority, owner, labels, type
+- **Notes section:** Displays research reports and extended notes from `notes` field (only when non-empty)
 - **Workflow action buttons:** Start Work (open), Close with reason (in_progress/blocked/deferred), Reopen (closed)
 - Dependency tree: blocked by / unblocks (with titles resolved)
-- **Epic children:** For epic issues, lists all child issues (computed from `allIssues` where `issue.epic === epicId`)
+- **Epic children with progress:** For epic issues, lists all child issues with a progress bar showing completion percentage (closed/total)
 - **Parent epic link:** For child issues, sidebar shows clickable link to parent epic
 - Token usage sessions table
 - Timestamps (created, updated, closed) and close reason
+
+### Epic Progress Bars
+- **IssueCard (card variant):** Epic-type issues show a progress bar below the title (closed/total children)
+- **IssueCard (row variant):** Epic column shows progress bar below the epic link
+- **IssueDetailPanel:** Epic issues show a progress bar in the slide-in panel
+- **Issue detail page:** Children section header shows "Children (X/Y — Z%)" with progress bar
+- Progress computed from `allIssues` where `issue.epic === epicId`, counting `status === "closed"` as complete
+
+### App Store Submission Tracking
+- Uses existing label system: `submission:ready`, `submission:in-review`, `submission:approved`, `submission:rejected`
+- **Colored badges:** IssueCard renders `submission:*` labels with colored badges (ready=blue, in-review=amber, approved=green, rejected=red)
+- **Built-in "Submissions" view:** Filters for any issue with a `submission:*` label using the `labelPrefix` filter
+- Factory agent labels issues via `bd label add <id> submission:ready` etc.
 
 ### System Health & Setup
 - Health check: bv CLI availability, project path validity
@@ -306,7 +322,7 @@ Manages `~/.beads-web.json`. `ALL_PROJECTS_SENTINEL = "__all__"` enables aggrega
 - **`findRepoForIssue(issueId)`** — Resolves which repo an issue belongs to by checking each configured repo's SQLite DB. Used by the action route to run `bd` in the correct project directory, even in `__all__` aggregation mode.
 
 ### `src/lib/recipes.ts`
-Filter engine. `FilterCriteria` supports: statuses, priorities, types, owner, labels, projects, epic, hasBlockers, isStale, isRecent, search text. Built-in views: All Issues, Actionable, In Progress, Blocked, High Priority, Bugs. Custom views saved to localStorage.
+Filter engine. `FilterCriteria` supports: statuses, priorities, types, owner, labels, labelPrefix, projects, epic, hasBlockers, isStale, isRecent, search text. Built-in views: All Issues, Actionable, In Progress, Blocked, High Priority, Bugs, Submissions. Custom views saved to localStorage.
 
 ### `src/lib/token-usage.ts`
 Reads `.beads/token-usage.jsonl`. Provides raw records and per-issue aggregated summaries (tokens, cost, sessions, duration, turns).

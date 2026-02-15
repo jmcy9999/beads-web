@@ -12,11 +12,31 @@ function getProject(issue: PlanIssue): string {
   return label ? label.slice(8) : "";
 }
 
+function getSubmissionBadge(label: string): { text: string; className: string } | null {
+  if (!label.startsWith("submission:")) return null;
+  const state = label.slice(11);
+  const styles: Record<string, string> = {
+    ready: "bg-blue-500/20 text-blue-300",
+    "in-review": "bg-amber-500/20 text-amber-300",
+    approved: "bg-green-500/20 text-green-300",
+    rejected: "bg-red-500/20 text-red-300",
+  };
+  return { text: state, className: styles[state] ?? "bg-surface-2 text-gray-300" };
+}
+
+function computeEpicProgress(epicId: string, allIssues: PlanIssue[]): { closed: number; total: number } | null {
+  const children = allIssues.filter((i) => i.epic === epicId);
+  if (children.length === 0) return null;
+  const closed = children.filter((i) => i.status === "closed").length;
+  return { closed, total: children.length };
+}
+
 interface IssueCardProps {
   issue: PlanIssue;
   variant?: "card" | "row";
   onClick?: (issueId: string) => void;
   tokenCost?: number;
+  allIssues?: PlanIssue[];
 }
 
 export function IssueCard({
@@ -24,6 +44,7 @@ export function IssueCard({
   variant = "card",
   onClick,
   tokenCost,
+  allIssues,
 }: IssueCardProps) {
   const router = useRouter();
 
@@ -77,13 +98,31 @@ export function IssueCard({
         </td>
         <td className="px-3 py-2 text-sm">
           {issue.epic ? (
-            <Link
-              href={`/issue/${issue.epic}`}
-              onClick={(e) => e.stopPropagation()}
-              className="text-purple-400 hover:text-purple-300 transition-colors"
-            >
-              {issue.epic_title ?? issue.epic}
-            </Link>
+            <div>
+              <Link
+                href={`/issue/${issue.epic}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-purple-400 hover:text-purple-300 transition-colors"
+              >
+                {issue.epic_title ?? issue.epic}
+              </Link>
+              {allIssues && (() => {
+                const progress = computeEpicProgress(issue.epic!, allIssues);
+                if (!progress) return null;
+                const pct = Math.round((progress.closed / progress.total) * 100);
+                return (
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex-1 h-1 bg-surface-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-500">{pct}%</span>
+                  </div>
+                );
+              })()}
+            </div>
           ) : (
             <span className="text-gray-500">{"\u2014"}</span>
           )}
@@ -126,6 +165,22 @@ export function IssueCard({
         </div>
       </div>
       <h3 className="text-sm font-medium mb-2 line-clamp-2">{issue.title}</h3>
+      {allIssues && issue.issue_type === "epic" && (() => {
+        const progress = computeEpicProgress(issue.id, allIssues);
+        if (!progress) return null;
+        const pct = Math.round((progress.closed / progress.total) * 100);
+        return (
+          <div className="mt-1 mb-2 flex items-center gap-1.5">
+            <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-gray-500">{progress.closed}/{progress.total}</span>
+          </div>
+        );
+      })()}
       {issue.impact_score != null && issue.impact_score > 0 && (
         <div className="mt-1 flex items-center gap-1.5">
           <div className="flex-1 h-1 bg-surface-2 rounded-full overflow-hidden">
@@ -135,6 +190,22 @@ export function IssueCard({
             />
           </div>
           <span className="text-[10px] text-gray-500">{Math.round(issue.impact_score * 100)}</span>
+        </div>
+      )}
+      {issue.labels && issue.labels.some((l) => l.startsWith("submission:")) && (
+        <div className="flex flex-wrap gap-1 mb-1">
+          {issue.labels.filter((l) => l.startsWith("submission:")).map((label) => {
+            const badge = getSubmissionBadge(label);
+            if (!badge) return null;
+            return (
+              <span
+                key={label}
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badge.className}`}
+              >
+                {badge.text}
+              </span>
+            );
+          })}
         </div>
       )}
       <div className="flex items-center justify-between">

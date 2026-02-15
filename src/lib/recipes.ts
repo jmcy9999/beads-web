@@ -19,6 +19,7 @@ export interface FilterCriteria {
   hasBlockers?: boolean;
   isStale?: boolean; // updated > 30 days ago
   isRecent?: boolean; // updated < 7 days ago
+  labelPrefix?: string;  // match issues having any label starting with this prefix
   search?: string;
 }
 
@@ -93,6 +94,15 @@ export const BUILT_IN_VIEWS: SavedView[] = [
     },
     isBuiltIn: true,
   },
+  {
+    id: "submissions",
+    name: "Submissions",
+    description: "App Store submission tracking",
+    filter: {
+      labelPrefix: "submission:",
+    },
+    isBuiltIn: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -147,6 +157,13 @@ export function applyFilter(
         if (issue.epic) return false;
       } else {
         if (issue.epic !== filter.epic) return false;
+      }
+    }
+
+    // Label prefix filter (e.g. "submission:" matches submission:ready, submission:approved)
+    if (filter.labelPrefix) {
+      if (!issue.labels || !issue.labels.some((l) => l.startsWith(filter.labelPrefix!))) {
+        return false;
       }
     }
 

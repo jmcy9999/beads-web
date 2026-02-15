@@ -184,6 +184,32 @@ export function IssueDetailPanel({
             </div>
           )}
 
+          {/* Epic Progress */}
+          {issue.issue_type === "epic" && (() => {
+            const children = allIssues.filter((i) => i.epic === issue.id);
+            if (children.length === 0) return null;
+            const closedCount = children.filter((i) => i.status === "closed").length;
+            const pct = Math.round((closedCount / children.length) * 100);
+            return (
+              <div>
+                <h3 className="text-xs font-medium uppercase text-gray-500 mb-1">
+                  Progress ({closedCount}/{children.length})
+                </h3>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 rounded-full bg-surface-2 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-gray-300">
+                    {pct}%
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Blocked By */}
           {issue.blocked_by.length > 0 && (
             <div>

@@ -51,6 +51,7 @@ export interface BeadsIssue {
   updated_at: string;
   closed_at?: string;
   close_reason?: string;
+  notes?: string;
 }
 
 // -----------------------------------------------------------------------------

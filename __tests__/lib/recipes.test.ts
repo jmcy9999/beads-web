@@ -354,6 +354,79 @@ describe("applyFilter", () => {
   });
 
   // ---------------------------------------------------------------------------
+  // Label prefix filter
+  // ---------------------------------------------------------------------------
+
+  describe("labelPrefix filter", () => {
+    const submissionIssues: PlanIssue[] = [
+      {
+        id: "S-1",
+        title: "App ready for review",
+        status: "open",
+        priority: 1,
+        issue_type: "task",
+        blocked_by: [],
+        blocks: [],
+        labels: ["submission:ready", "app:LensCycle"],
+      },
+      {
+        id: "S-2",
+        title: "App in review",
+        status: "in_progress",
+        priority: 1,
+        issue_type: "task",
+        blocked_by: [],
+        blocks: [],
+        labels: ["submission:in-review"],
+      },
+      {
+        id: "S-3",
+        title: "No submission label",
+        status: "open",
+        priority: 2,
+        issue_type: "task",
+        blocked_by: [],
+        blocks: [],
+        labels: ["dev"],
+      },
+      {
+        id: "S-4",
+        title: "No labels at all",
+        status: "open",
+        priority: 3,
+        issue_type: "task",
+        blocked_by: [],
+        blocks: [],
+      },
+    ];
+
+    it("matches issues with labels starting with the prefix", () => {
+      const result = applyFilter(submissionIssues, { labelPrefix: "submission:" });
+      expect(result).toHaveLength(2);
+      expect(result.map((i) => i.id).sort()).toEqual(["S-1", "S-2"]);
+    });
+
+    it("excludes issues without matching prefix", () => {
+      const result = applyFilter(submissionIssues, { labelPrefix: "nonexistent:" });
+      expect(result).toHaveLength(0);
+    });
+
+    it("excludes issues with no labels", () => {
+      const result = applyFilter(submissionIssues, { labelPrefix: "submission:" });
+      expect(result.find((i) => i.id === "S-4")).toBeUndefined();
+    });
+
+    it("combines with status filter", () => {
+      const result = applyFilter(submissionIssues, {
+        labelPrefix: "submission:",
+        statuses: ["open"],
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("S-1");
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Multiple filters (AND logic)
   // ---------------------------------------------------------------------------
 
@@ -447,8 +520,8 @@ describe("applyFilter", () => {
 // =============================================================================
 
 describe("BUILT_IN_VIEWS", () => {
-  it("has 6 entries", () => {
-    expect(BUILT_IN_VIEWS).toHaveLength(6);
+  it("has 7 entries", () => {
+    expect(BUILT_IN_VIEWS).toHaveLength(7);
   });
 
   it("has correct ids", () => {
@@ -460,6 +533,7 @@ describe("BUILT_IN_VIEWS", () => {
       "blocked",
       "high-priority",
       "bugs",
+      "submissions",
     ]);
   });
 
@@ -534,6 +608,26 @@ describe("BUILT_IN_VIEWS", () => {
       // T-2 is in_progress bug
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("T-2");
+    });
+
+    it("'submissions' returns issues with submission: labels", () => {
+      const view = BUILT_IN_VIEWS.find((v) => v.id === "submissions")!;
+      const submissionIssues: PlanIssue[] = [
+        ...testPlanIssues,
+        {
+          id: "SUB-1",
+          title: "App submission",
+          status: "open",
+          priority: 1,
+          issue_type: "task",
+          blocked_by: [],
+          blocks: [],
+          labels: ["submission:ready"],
+        },
+      ];
+      const result = applyFilter(submissionIssues, view.filter);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("SUB-1");
     });
 
     it("'high-priority' returns P0/P1 non-closed issues", () => {
