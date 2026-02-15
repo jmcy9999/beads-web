@@ -1,18 +1,46 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { FleetBoard } from "@/components/fleet/FleetBoard";
 import { ActivityTimeline } from "@/components/fleet/ActivityTimeline";
+import { AgentStatusBanner } from "@/components/fleet/AgentStatusBanner";
 import { buildFleetApps, computeEpicCosts } from "@/components/fleet/fleet-utils";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { CardSkeleton } from "@/components/ui/LoadingSkeleton";
 import { useIssues } from "@/hooks/useIssues";
 import { useTokenUsage, useTokenUsageSummary } from "@/hooks/useTokenUsage";
+import { useAgentStatus, useAgentLaunch, useAgentStop } from "@/hooks/useAgent";
+import { useRepos } from "@/hooks/useRepos";
 
 export default function FleetPage() {
   const { data, isLoading, error, refetch } = useIssues();
   const { data: tokenData } = useTokenUsageSummary();
   const { data: tokenRecords } = useTokenUsage();
+  const { data: agentStatus } = useAgentStatus();
+  const { data: repoStore } = useRepos();
+  const launchAgent = useAgentLaunch();
+  const stopAgent = useAgentStop();
+
+  // Find a factory-type repo for launching research agents
+  const factoryRepoPath = useMemo(() => {
+    if (!repoStore?.repos) return null;
+    const factory = repoStore.repos.find((r) => r.name.includes("factory"));
+    return factory?.path ?? null;
+  }, [repoStore]);
+
+  const handleLaunchResearch = useCallback(
+    (epicId: string, epicTitle: string) => {
+      if (!factoryRepoPath) return;
+      launchAgent.mutate({
+        repoPath: factoryRepoPath,
+        prompt: `Research the app idea "${epicTitle}" (epic: ${epicId}). Follow the research workflow instructions in CLAUDE.md.`,
+        model: "sonnet",
+        maxTurns: 200,
+        allowedTools: "Bash,Read,Write,Edit,Glob,Grep,WebSearch,WebFetch",
+      });
+    },
+    [factoryRepoPath, launchAgent],
+  );
 
   const allIssues = useMemo(() => data?.all_issues ?? [], [data]);
   const epicCount = useMemo(
@@ -64,6 +92,15 @@ export default function FleetPage() {
         )}
       </div>
 
+      {/* Agent status banner */}
+      {agentStatus?.running && agentStatus.session && (
+        <AgentStatusBanner
+          session={agentStatus.session}
+          onStop={() => stopAgent.mutate()}
+          isStopping={stopAgent.isPending}
+        />
+      )}
+
       {error && (
         <ErrorState
           message="Failed to load issues"
@@ -88,7 +125,14 @@ export default function FleetPage() {
         </div>
       )}
 
-      {data && <FleetBoard issues={allIssues} epicCosts={epicCosts} />}
+      {data && (
+        <FleetBoard
+          issues={allIssues}
+          epicCosts={epicCosts}
+          onLaunchAgent={factoryRepoPath ? handleLaunchResearch : undefined}
+          agentRunning={agentStatus?.running ?? false}
+        />
+      )}
 
       {/* Agent Activity Timeline */}
       {tokenRecords && tokenRecords.length > 0 && (

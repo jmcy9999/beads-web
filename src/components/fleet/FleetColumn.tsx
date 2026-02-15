@@ -10,9 +10,11 @@ interface FleetColumnProps {
   stage: FleetStage;
   apps: FleetApp[];
   epicCosts?: Map<string, EpicCost>;
+  onLaunchAgent?: (epicId: string, epicTitle: string) => void;
+  agentRunning?: boolean;
 }
 
-export function FleetColumn({ stage, apps, epicCosts }: FleetColumnProps) {
+export function FleetColumn({ stage, apps, epicCosts, onLaunchAgent, agentRunning }: FleetColumnProps) {
   const config = FLEET_STAGE_CONFIG[stage];
 
   return (
@@ -41,6 +43,8 @@ export function FleetColumn({ stage, apps, epicCosts }: FleetColumnProps) {
               key={app.epic.id}
               app={app}
               cost={epicCosts?.get(app.epic.id)}
+              onLaunchAgent={onLaunchAgent}
+              agentRunning={agentRunning}
             />
           ))
         )}

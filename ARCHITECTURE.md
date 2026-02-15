@@ -279,6 +279,17 @@ Or add it directly to `~/.beads-web.json`:
 - **Utilities:** `timeline-utils.ts` provides pure functions: `buildTimelineEntries()`, `groupByDay()`, `formatDuration()`, `formatTokens()`, `computeBarPosition()`, `getEntryColor()`
 - **Expandable:** Shows most recent 5-7 days by default with "Show more" to expand
 
+### Agent Launch (Remote Claude Execution)
+- **Generic API:** `GET /api/agent` returns current status; `POST /api/agent` with `action: "launch"` or `action: "stop"` manages a background Claude Code process
+- **Backend:** `agent-launcher.ts` spawns `claude -p "<prompt>"` as a detached subprocess via `child_process.spawn()`, tracks PID, pipes output to log file
+- **Safety:** Only one agent can run at a time. Repo path must be in `~/.beads-web.json` config. `CLAUDECODE` env var unset to avoid "nested session" error
+- **Agent status:** Polls every 5 seconds via `useAgentStatus()`. Shows animated `AgentStatusBanner` on fleet page when running (model, elapsed time, PID, stop button)
+- **Fleet integration:** Idea-stage app cards show a "Start Research" button. Clicking launches Claude in the factory repo with a research prompt. Button disabled while an agent is already running.
+- **Hooks:** `useAgentLaunch()` (mutation), `useAgentStop()` (mutation), `useAgentStatus()` (polling query)
+- **Launch params:** `repoPath`, `prompt`, `model` (default: sonnet), `maxTurns` (default: 200), `allowedTools` (default: common tools)
+- **Process management:** Detached process (`child.unref()`) survives API restarts. Stop sends `SIGTERM` to process group. On exit, session state auto-clears.
+- **Logs:** Written to `$TMPDIR/beads-web-agent-logs/agent-<repo>-<timestamp>.log`. Status endpoint returns last 2KB of log.
+
 ### System Health & Setup
 - Health check: bv CLI availability, project path validity
 - Setup wizard for first-time users (prerequisites check, add first repo)
@@ -348,6 +359,8 @@ bv CLI (--robot-plan/insights/priority/diff)                            │
 | `/api/token-usage` | GET | `TokenUsageRecord[]` or summary | Params: `summary=true`, `issue_id=X`. Supports `__all__` |
 | `/api/research/[appName]` | GET | `{ content, repoPath }` | Reads `apps/<appName>/research/report.md` from configured repos. 404 if not found |
 | `/api/signals` | GET | `{ signals[], count, since }` | Params: `since` (required), `label`, `status`, `field`. Polling for state changes. Supports `__all__` |
+| `/api/agent` | GET | `AgentStatus` (running, session, recentLog) | Current agent process status |
+| `/api/agent` | POST | `{ launched, session }` or `{ stopped, pid }` | Body: `{ action: "launch", repoPath, prompt, model?, maxTurns?, allowedTools? }` or `{ action: "stop" }`. 409 if already running |
 
 ## Core Library Modules
 
@@ -384,6 +397,9 @@ Filter engine. `FilterCriteria` supports: statuses, priorities, types, owner, la
 ### `src/lib/token-usage.ts`
 Reads `.beads/token-usage.jsonl`. Provides raw records and per-issue aggregated summaries (tokens, cost, sessions, duration, turns).
 
+### `src/lib/agent-launcher.ts`
+Spawns Claude Code CLI as a detached background subprocess. Manages one active session at a time. Exports: `launchAgent(options)`, `getAgentStatus()`, `stopAgent()`. Types: `AgentSession`, `LaunchOptions`, `AgentStatus`.
+
 ### `src/lib/cache.ts`
 Simple TTL cache (10-second default). Used by bv-client to avoid redundant subprocess calls.
 
@@ -410,6 +426,9 @@ All TypeScript types:
 | `useRepoMutation()` | POST `/api/repos` | invalidates all queries |
 | `useTokenUsage(issueId?)` | `/api/token-usage` | 60s |
 | `useTokenUsageSummary()` | `/api/token-usage?summary=true` | 60s |
+| `useAgentStatus()` | GET `/api/agent` | 5s (while agent may be running) |
+| `useAgentLaunch()` | POST `/api/agent` (launch) | invalidates agent-status |
+| `useAgentStop()` | POST `/api/agent` (stop) | invalidates agent-status |
 | `useKeyboardShortcuts()` | -- | d/b/f/i/t/s navigation, / search, ? help |
 
 ## Component Tree
@@ -426,7 +445,7 @@ layout.tsx (server)
 ### Key Components
 - **Dashboard:** `SummaryCards`, `TokenUsageSummary`, `WhatsNext`, `PriorityAlerts`, `IssueTable` (with `FilterBar`), `ActivityFeed`
 - **Board:** `KanbanBoard` -> `KanbanColumn` -> `IssueCard`, `IssueDetailPanel` (slide-in)
-- **Fleet:** `FleetBoard` -> `FleetColumn` -> `FleetCard`, `ActivityTimeline` (agent session visualization), `fleet-utils.ts` (stage detection + data extraction), `timeline-utils.ts` (timeline data processing)
+- **Fleet:** `FleetBoard` -> `FleetColumn` -> `FleetCard`, `AgentStatusBanner` (running agent indicator), `ActivityTimeline` (agent session visualization), `fleet-utils.ts` (stage detection + data extraction), `timeline-utils.ts` (timeline data processing)
 - **Insights:** `MetricPanel` (bar charts), `CyclesPanel`, `GraphDensityBadge`, `DependencyGraph` (ReactFlow)
 - **Filters:** `FilterBar`, `RecipeSelector`
 - **UI primitives:** `StatusBadge`, `PriorityIndicator`, `IssueTypeIcon`, `SummaryCard`, `IssueCard` (row/card variants), `EmptyState`, `ErrorState`, `LoadingSkeleton`
@@ -520,6 +539,7 @@ src/
       token-usage/route.ts  # GET token usage (supports __all__)
       research/[appName]/route.ts  # GET research report markdown
       signals/route.ts      # GET polling endpoint for state changes
+      agent/route.ts        # GET/POST agent launch/stop/status
   lib/
     bv-client.ts            # Central data layer (bv CLI wrapper)
     types.ts                # All TypeScript types
@@ -541,6 +561,7 @@ src/
     useRepos.ts             # Repo config + mutation hook
     useTokenUsage.ts        # Token usage hooks
     useResearchReport.ts    # Research report fetcher
+    useAgent.ts             # Agent launch/stop/status hooks
     useKeyboardShortcuts.ts # Keyboard navigation
   components/
     providers/              # QueryProvider, ClientShell

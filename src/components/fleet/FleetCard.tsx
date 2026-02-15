@@ -8,6 +8,8 @@ import type { FleetApp, EpicCost } from "./fleet-utils";
 interface FleetCardProps {
   app: FleetApp;
   cost?: EpicCost;
+  onLaunchAgent?: (epicId: string, epicTitle: string) => void;
+  agentRunning?: boolean;
 }
 
 const PHASE_COLORS: Record<string, string> = {
@@ -17,7 +19,7 @@ const PHASE_COLORS: Record<string, string> = {
   other: "text-gray-400",
 };
 
-export function FleetCard({ app, cost }: FleetCardProps) {
+export function FleetCard({ app, cost, onLaunchAgent, agentRunning }: FleetCardProps) {
   const { epic, children, progress } = app;
   const pct =
     progress.total > 0
@@ -131,6 +133,21 @@ export function FleetCard({ app, cost }: FleetCardProps) {
           {epic.owner && <span>{epic.owner}</span>}
         </div>
       </div>
+
+      {/* Launch agent button for idea-stage apps */}
+      {app.stage === "idea" && onLaunchAgent && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onLaunchAgent(epic.id, epic.title);
+          }}
+          disabled={agentRunning}
+          className="mt-2 w-full px-3 py-1.5 text-xs font-medium rounded-md text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {agentRunning ? "Agent Running..." : "Start Research"}
+        </button>
+      )}
     </Link>
   );
 }

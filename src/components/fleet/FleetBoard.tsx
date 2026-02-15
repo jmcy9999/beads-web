@@ -10,9 +10,11 @@ import type { PlanIssue } from "@/lib/types";
 interface FleetBoardProps {
   issues: PlanIssue[];
   epicCosts?: Map<string, EpicCost>;
+  onLaunchAgent?: (epicId: string, epicTitle: string) => void;
+  agentRunning?: boolean;
 }
 
-export function FleetBoard({ issues, epicCosts }: FleetBoardProps) {
+export function FleetBoard({ issues, epicCosts, onLaunchAgent, agentRunning }: FleetBoardProps) {
   const apps = buildFleetApps(issues);
 
   const grouped = new Map<FleetStage, typeof apps>();
@@ -36,6 +38,8 @@ export function FleetBoard({ issues, epicCosts }: FleetBoardProps) {
           stage={stage}
           apps={grouped.get(stage) ?? []}
           epicCosts={epicCosts}
+          onLaunchAgent={onLaunchAgent}
+          agentRunning={agentRunning}
         />
       ))}
     </div>

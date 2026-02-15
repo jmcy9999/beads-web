@@ -1,0 +1,210 @@
+// =============================================================================
+// Beads Web — Generic Agent Launcher
+// =============================================================================
+//
+// Spawns Claude Code CLI as a background subprocess to run autonomous tasks
+// in any configured beads-enabled repo. Tracks running processes by PID.
+// =============================================================================
+
+import { spawn, type ChildProcess } from "child_process";
+import { promises as fs } from "fs";
+import path from "path";
+import os from "os";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface AgentSession {
+  pid: number;
+  repoPath: string;
+  repoName: string;
+  prompt: string;
+  model: string;
+  startedAt: string;
+  logFile: string;
+}
+
+export interface LaunchOptions {
+  repoPath: string;
+  repoName?: string;
+  prompt: string;
+  model?: string;
+  maxTurns?: number;
+  allowedTools?: string;
+}
+
+// ---------------------------------------------------------------------------
+// State — in-memory singleton (process lifetime)
+// ---------------------------------------------------------------------------
+
+let activeSession: AgentSession | null = null;
+let activeProcess: ChildProcess | null = null;
+
+const LOG_DIR = path.join(os.tmpdir(), "beads-web-agent-logs");
+
+// ---------------------------------------------------------------------------
+// Ensure log directory exists
+// ---------------------------------------------------------------------------
+
+async function ensureLogDir(): Promise<void> {
+  try {
+    await fs.mkdir(LOG_DIR, { recursive: true });
+  } catch {
+    // Already exists
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Launch
+// ---------------------------------------------------------------------------
+
+export async function launchAgent(options: LaunchOptions): Promise<AgentSession> {
+  if (activeSession && activeProcess && !activeProcess.killed) {
+    throw new Error(
+      `Agent already running (PID ${activeSession.pid}) in ${activeSession.repoName}. Stop it first.`,
+    );
+  }
+
+  await ensureLogDir();
+
+  const model = options.model ?? "sonnet";
+  const maxTurns = options.maxTurns ?? 200;
+  const allowedTools = options.allowedTools ?? "Bash,Read,Write,Edit,Glob,Grep";
+  const repoName = options.repoName ?? path.basename(options.repoPath);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const logFile = path.join(LOG_DIR, `agent-${repoName}-${timestamp}.log`);
+
+  const args = [
+    "-p",
+    options.prompt,
+    "--allowedTools",
+    allowedTools,
+    "--output-format",
+    "json",
+    "--max-turns",
+    String(maxTurns),
+    "--model",
+    model,
+  ];
+
+  // Spawn detached so it survives if the API process restarts
+  const child = spawn("claude", args, {
+    cwd: options.repoPath,
+    detached: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      // Must unset CLAUDECODE to avoid "nested session" error
+      CLAUDECODE: undefined,
+      NO_COLOR: "1",
+    },
+  });
+
+  // Pipe stdout/stderr to log file
+  const logStream = await fs.open(logFile, "w");
+  const writableLog = logStream.createWriteStream();
+  child.stdout?.pipe(writableLog);
+  child.stderr?.pipe(writableLog);
+
+  const session: AgentSession = {
+    pid: child.pid!,
+    repoPath: options.repoPath,
+    repoName,
+    prompt: options.prompt,
+    model,
+    startedAt: new Date().toISOString(),
+    logFile,
+  };
+
+  activeSession = session;
+  activeProcess = child;
+
+  // Clean up when process exits
+  child.on("exit", () => {
+    if (activeSession?.pid === child.pid) {
+      activeSession = null;
+      activeProcess = null;
+    }
+    writableLog.end();
+    logStream.close();
+  });
+
+  // Don't let the child keep our process alive
+  child.unref();
+
+  return session;
+}
+
+// ---------------------------------------------------------------------------
+// Status
+// ---------------------------------------------------------------------------
+
+export interface AgentStatus {
+  running: boolean;
+  session: AgentSession | null;
+  recentLog?: string;
+}
+
+export async function getAgentStatus(): Promise<AgentStatus> {
+  if (!activeSession || !activeProcess) {
+    return { running: false, session: null };
+  }
+
+  // Check if process is still alive
+  if (activeProcess.killed || activeProcess.exitCode !== null) {
+    activeSession = null;
+    activeProcess = null;
+    return { running: false, session: null };
+  }
+
+  // Read recent log output (last 2KB)
+  let recentLog: string | undefined;
+  try {
+    const stat = await fs.stat(activeSession.logFile);
+    const readSize = Math.min(stat.size, 2048);
+    const offset = Math.max(0, stat.size - readSize);
+    const fh = await fs.open(activeSession.logFile, "r");
+    const buf = Buffer.alloc(readSize);
+    await fh.read(buf, 0, readSize, offset);
+    await fh.close();
+    recentLog = buf.toString("utf-8");
+  } catch {
+    // Log file not readable yet
+  }
+
+  return {
+    running: true,
+    session: activeSession,
+    recentLog,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Stop
+// ---------------------------------------------------------------------------
+
+export async function stopAgent(): Promise<{ stopped: boolean; pid?: number }> {
+  if (!activeSession || !activeProcess) {
+    return { stopped: false };
+  }
+
+  const pid = activeSession.pid;
+
+  try {
+    // Send SIGTERM to the process group (negative PID kills the group)
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    // Process may already be dead
+    try {
+      activeProcess.kill("SIGTERM");
+    } catch {
+      // Already dead
+    }
+  }
+
+  activeSession = null;
+  activeProcess = null;
+
+  return { stopped: true, pid };
+}
