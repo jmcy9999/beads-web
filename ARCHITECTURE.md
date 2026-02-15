@@ -225,10 +225,18 @@ Or add it directly to `~/.beads-web.json`:
 - **Built-in "Submissions" view:** Filters for any issue with a `submission:*` label using the `labelPrefix` filter
 - Factory agent labels issues via `bd label add <id> submission:ready` etc.
 
+### App Fleet Dashboard
+- **Pipeline view:** Epics displayed as "apps" in a factory pipeline kanban with 5 stages: Idea | Research | Development | Submission | Completed
+- **Stage detection:** Automatic based on children's labels — `research` label = Research stage, `development` label = Development stage, `submission:*` labels = Submission stage, epic closed = Completed, default = Idea. Highest active stage wins; closed children are ignored.
+- **Fleet cards:** Each app shows epic title, progress bar (closed/total children), priority, active/blocked task counts, submission status badges, and owner
+- **Empty state:** Guidance on how to create epics and label children to use the fleet view
+- **Navigation:** Sidebar link + keyboard shortcut `f`
+- **Components:** `FleetBoard` -> `FleetColumn` -> `FleetCard`, with `fleet-utils.ts` for stage detection and fleet data extraction
+
 ### System Health & Setup
 - Health check: bv CLI availability, project path validity
 - Setup wizard for first-time users (prerequisites check, add first repo)
-- Keyboard shortcuts: d(ashboard), b(oard), i(nsights), t(ime travel), s(ettings), /(search), ?(help)
+- Keyboard shortcuts: d(ashboard), b(oard), f(leet), i(nsights), t(ime travel), s(ettings), /(search), ?(help)
 - Live indicator with auto-polling (30s issues, 60s insights/tokens)
 
 ### Graceful Degradation
@@ -272,6 +280,7 @@ bv CLI (--robot-plan/insights/priority/diff)                            │
 |-------|------|---------------|
 | `/` | Dashboard | Summary cards (open/in_progress/blocked/closed counts), token usage totals, highest-impact issue, priority misalignment alerts, full issue table with sort/filter, recent activity feed |
 | `/board` | Kanban Board | Issues grouped by status columns (open, in_progress, blocked, closed), click-to-open detail panel |
+| `/fleet` | App Fleet | Factory pipeline kanban — epics as apps in Idea/Research/Development/Submission/Completed stages |
 | `/insights` | Graph Analytics | Bottlenecks, keystones, influencers, hubs, authorities (top-5 bar charts), dependency cycles, graph density, interactive ReactFlow dependency graph |
 | `/diff` | Time Travel | Compare current state against a git ref (HEAD~1/5/10/20 or custom), shows new/closed/modified/reopened issues with field-level diffs |
 | `/settings` | Settings | Add/remove/switch repos, stored in `~/.beads-web.json` |
@@ -352,7 +361,7 @@ All TypeScript types:
 | `useRepoMutation()` | POST `/api/repos` | invalidates all queries |
 | `useTokenUsage(issueId?)` | `/api/token-usage` | 60s |
 | `useTokenUsageSummary()` | `/api/token-usage?summary=true` | 60s |
-| `useKeyboardShortcuts()` | -- | d/b/i/t/s navigation, / search, ? help |
+| `useKeyboardShortcuts()` | -- | d/b/f/i/t/s navigation, / search, ? help |
 
 ## Component Tree
 
@@ -368,6 +377,7 @@ layout.tsx (server)
 ### Key Components
 - **Dashboard:** `SummaryCards`, `TokenUsageSummary`, `WhatsNext`, `PriorityAlerts`, `IssueTable` (with `FilterBar`), `ActivityFeed`
 - **Board:** `KanbanBoard` -> `KanbanColumn` -> `IssueCard`, `IssueDetailPanel` (slide-in)
+- **Fleet:** `FleetBoard` -> `FleetColumn` -> `FleetCard`, `fleet-utils.ts` (stage detection + data extraction)
 - **Insights:** `MetricPanel` (bar charts), `CyclesPanel`, `GraphDensityBadge`, `DependencyGraph` (ReactFlow)
 - **Filters:** `FilterBar`, `RecipeSelector`
 - **UI primitives:** `StatusBadge`, `PriorityIndicator`, `IssueTypeIcon`, `SummaryCard`, `IssueCard` (row/card variants), `EmptyState`, `ErrorState`, `LoadingSkeleton`
@@ -444,6 +454,7 @@ src/
     page.tsx                # Dashboard
     globals.css             # Custom scrollbar, card classes, animations
     board/page.tsx          # Kanban board
+    fleet/page.tsx          # App fleet pipeline dashboard
     insights/page.tsx       # Graph analytics
     diff/page.tsx           # Time travel diff
     settings/page.tsx       # Repo management
@@ -484,6 +495,7 @@ src/
     layout/                 # Sidebar, Header
     dashboard/              # SummaryCards, WhatsNext, PriorityAlerts, IssueTable, ActivityFeed, TokenUsageSummary
     board/                  # KanbanBoard, KanbanColumn, IssueDetailPanel
+    fleet/                  # FleetBoard, FleetColumn, FleetCard, fleet-utils
     insights/               # MetricPanel, CyclesPanel, GraphDensityBadge, DependencyGraph
     filters/                # FilterBar, RecipeSelector
     ui/                     # StatusBadge, PriorityIndicator, IssueTypeIcon, SummaryCard, IssueCard, EmptyState, ErrorState, LoadingSkeleton, ErrorBoundary, ShortcutsHelp, SetupWizard

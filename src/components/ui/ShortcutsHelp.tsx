@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 const SHORTCUTS = [
   { key: "d", description: "Go to Dashboard" },
   { key: "b", description: "Go to Board" },
+  { key: "f", description: "Go to Fleet" },
   { key: "i", description: "Go to Insights" },
   { key: "t", description: "Go to Time Travel" },
   { key: "s", description: "Go to Settings" },

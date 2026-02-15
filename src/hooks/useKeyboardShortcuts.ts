@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
  * - / : Focus search (if FilterBar is present)
  * - d : Navigate to Dashboard
  * - b : Navigate to Board
+ * - f : Navigate to Fleet
  * - i : Navigate to Insights
  * - t : Navigate to Time Travel (Diff)
  * - s : Navigate to Settings
@@ -42,6 +43,10 @@ export function useKeyboardShortcuts() {
         case "b":
           e.preventDefault();
           router.push("/board");
+          break;
+        case "f":
+          e.preventDefault();
+          router.push("/fleet");
           break;
         case "i":
           e.preventDefault();
