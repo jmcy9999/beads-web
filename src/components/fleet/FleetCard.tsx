@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { PriorityIndicator } from "@/components/ui/PriorityIndicator";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { isAgentRunning, type FleetApp, type EpicCost } from "./fleet-utils";
+import {
+  isAgentRunning,
+  getPhaseHistory,
+  FLEET_STAGE_CONFIG,
+  type FleetApp,
+  type EpicCost,
+} from "./fleet-utils";
 import type { PipelineActionPayload } from "./FleetBoard";
 
 interface FleetCardProps {
@@ -177,6 +183,38 @@ export function FleetCard({ app, cost, onPipelineAction, agentRunning }: FleetCa
           )}
           {epic.owner && <span>{epic.owner}</span>}
         </div>
+      </div>
+
+      {/* ---- Phase history indicator ---- */}
+      <div className="mt-2 pt-2 border-t border-border-default flex items-center gap-1">
+        {getPhaseHistory(app.stage).map(({ stage, status }) => {
+          const cfg = FLEET_STAGE_CONFIG[stage];
+          return (
+            <span
+              key={stage}
+              title={cfg.label}
+              className="relative flex items-center justify-center"
+            >
+              {status === "current" ? (
+                /* Current stage: filled dot with a pulsing ring */
+                <span className="relative flex h-2.5 w-2.5">
+                  <span
+                    className={`animate-ping absolute inline-flex h-full w-full rounded-full ${cfg.dotColor} opacity-40`}
+                  />
+                  <span
+                    className={`relative inline-flex rounded-full h-2.5 w-2.5 ${cfg.dotColor}`}
+                  />
+                </span>
+              ) : status === "past" ? (
+                /* Past stage: solid filled dot */
+                <span className={`inline-flex rounded-full h-2 w-2 ${cfg.dotColor}`} />
+              ) : (
+                /* Future stage: hollow/dimmed dot */
+                <span className={`inline-flex rounded-full h-2 w-2 ${cfg.dotColor} opacity-20`} />
+              )}
+            </span>
+          );
+        })}
       </div>
 
       {/* ---- Stage-specific action buttons ---- */}

@@ -86,6 +86,65 @@ export function isAgentRunning(epic: PlanIssue): boolean {
 }
 
 /**
+ * Linear pipeline stages in order (excludes "bad-idea" which is terminal/separate).
+ */
+export const PIPELINE_ORDER: FleetStage[] = [
+  "idea",
+  "research",
+  "research-complete",
+  "development",
+  "submission-prep",
+  "submitted",
+  "kit-management",
+  "completed",
+];
+
+export type PhaseStatus = "past" | "current" | "future";
+
+export interface PhaseHistoryEntry {
+  stage: FleetStage;
+  status: PhaseStatus;
+}
+
+/**
+ * Derive phase history from the current pipeline stage.
+ *
+ * For stages in the linear pipeline (idea -> completed), any stage before
+ * the current one is "past", the current one is "current", and stages
+ * after are "future".
+ *
+ * For "bad-idea" (terminal), only the "idea" stage is shown as "past"
+ * and "bad-idea" itself is "current". The rest are "future".
+ */
+export function getPhaseHistory(currentStage: FleetStage): PhaseHistoryEntry[] {
+  if (currentStage === "bad-idea") {
+    return PIPELINE_ORDER.map((stage) => ({
+      stage,
+      status: stage === "idea" ? ("past" as const) : ("future" as const),
+    }));
+  }
+
+  const currentIndex = PIPELINE_ORDER.indexOf(currentStage);
+  // If stage not found in pipeline order (shouldn't happen), treat everything as future
+  if (currentIndex === -1) {
+    return PIPELINE_ORDER.map((stage) => ({
+      stage,
+      status: "future" as const,
+    }));
+  }
+
+  return PIPELINE_ORDER.map((stage, index) => ({
+    stage,
+    status:
+      index < currentIndex
+        ? ("past" as const)
+        : index === currentIndex
+          ? ("current" as const)
+          : ("future" as const),
+  }));
+}
+
+/**
  * Determine which pipeline stage an epic is in.
  *
  * Primary detection: reads `pipeline:*` labels on the epic itself.
