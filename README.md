@@ -13,6 +13,29 @@ The first web frontend for Beads. Until now, interaction with Beads has been lim
 
 ---
 
+## Contents
+
+- [Features](#features)
+  - [Core Issue Management](#core-issue-management)
+  - [Analysis & Insights](#analysis--insights)
+  - [Pipeline & Agent Orchestration](#pipeline--agent-orchestration)
+  - [Multi-Repo & Navigation](#multi-repo--navigation)
+- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Pages](#pages)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [API Routes](#api-routes)
+- [Development](#development)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Features
 
 ### Core Issue Management
