@@ -289,9 +289,8 @@ export function Sidebar() {
     <aside className="hidden lg:flex lg:flex-col w-64 bg-surface-1 border-r border-border-default z-30">
       {/* Logo / Brand */}
       <div className="flex items-center gap-2 px-6 h-16 border-b border-border-default">
-        <div className="w-8 h-8 rounded-lg bg-status-open/20 flex items-center justify-center">
-          <span className="text-status-open font-bold text-sm">B</span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.svg" alt="Beads" className="w-8 h-8 rounded-lg" />
         <span className="text-lg font-semibold text-white tracking-tight">
           Beads Web
         </span>

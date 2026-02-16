@@ -13,7 +13,6 @@ export const metadata: Metadata = {
   description: "Web dashboard for the Beads issue tracker",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    shortcut: "/favicon.ico",
     apple: "/apple-icon",
   },
   manifest: "/manifest.webmanifest",
