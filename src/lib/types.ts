@@ -264,7 +264,19 @@ export const KANBAN_COLUMNS: IssueStatus[] = [
 ];
 
 // -----------------------------------------------------------------------------
-// Category D: Token Usage Types
+// Category D: Comments
+// -----------------------------------------------------------------------------
+
+export interface BeadsComment {
+  id: number;
+  issue_id: string;
+  author: string;
+  text: string;
+  created_at: string;
+}
+
+// -----------------------------------------------------------------------------
+// Category E: Token Usage Types
 // -----------------------------------------------------------------------------
 
 export interface TokenUsageRecord {

@@ -10,6 +10,7 @@ import { useIssues } from "@/hooks/useIssues";
 import { useTokenUsage, useTokenUsageSummary } from "@/hooks/useTokenUsage";
 import { useResearchReport } from "@/hooks/useResearchReport";
 import { usePlanReport } from "@/hooks/usePlanReport";
+import { useComments, useAddComment } from "@/hooks/useComments";
 import { useIssueAction } from "@/hooks/useIssueAction";
 import { usePipelineAction } from "@/hooks/usePipelineAction";
 import type { PipelineActionType } from "@/hooks/usePipelineAction";
@@ -679,6 +680,9 @@ export default function IssueDetailPage() {
   const allIssues = planData?.all_issues ?? [];
   const { data: tokenRecords } = useTokenUsage(issueId ?? undefined);
   const { data: tokenSummary } = useTokenUsageSummary();
+  const { data: comments } = useComments(issueId);
+  const addComment = useAddComment();
+  const [commentText, setCommentText] = useState("");
 
   // Use plan_issue for graph data (blocked_by, blocks), raw_issue for detail fields
   const planIssue = data?.plan_issue ?? null;
@@ -713,17 +717,8 @@ export default function IssueDetailPage() {
   }, [issue, rawIssue]);
   const { data: researchReport } = useResearchReport(researchAppName);
 
-  // Only fetch plan for epics or issues with plan-related labels
-  const planIssueId = useMemo(() => {
-    if (!issue) return null;
-    const issueLabels = rawIssue?.labels ?? issue.labels ?? [];
-    const hasPlanLabel = issueLabels.some(
-      (l) => l.startsWith("plan:") || l.startsWith("pipeline:"),
-    );
-    if (issue.issue_type === "epic" || hasPlanLabel) return issueId;
-    return null;
-  }, [issue, rawIssue, issueId]);
-  const { data: planReport } = usePlanReport(planIssueId);
+  // Fetch plan if one exists (API returns 404 gracefully for issues without plans)
+  const { data: planReport } = usePlanReport(issueId);
 
   // --- Loading ---
   if (detailLoading) {
@@ -959,6 +954,73 @@ export default function IssueDetailPage() {
                 </div>
               );
             })()}
+          </section>
+
+          {/* Comments */}
+          <section className="card p-5">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-gray-500 mb-3">
+              Comments
+              {comments && comments.length > 0 && (
+                <span className="ml-1.5 text-gray-600">({comments.length})</span>
+              )}
+            </h2>
+
+            {comments && comments.length > 0 ? (
+              <div className="space-y-3 mb-4">
+                {comments.map((c) => (
+                  <div key={c.id} className="border-l-2 border-border-default pl-3">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-medium text-gray-300">{c.author}</span>
+                      <span className="text-xs text-gray-500">
+                        {formatTimestamp(c.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap">{c.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic mb-4">No comments yet</p>
+            )}
+
+            <div className="space-y-2">
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Add a comment..."
+                rows={2}
+                className="w-full rounded-md border border-border-default bg-surface-2 px-3 py-1.5 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && commentText.trim()) {
+                    addComment.mutate(
+                      { issueId: issue.id, text: commentText.trim() },
+                      { onSuccess: () => setCommentText("") },
+                    );
+                  }
+                }}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  {typeof navigator !== "undefined" && navigator.platform?.includes("Mac") ? "Cmd" : "Ctrl"}+Enter to submit
+                </span>
+                <button
+                  onClick={() => {
+                    if (!commentText.trim()) return;
+                    addComment.mutate(
+                      { issueId: issue.id, text: commentText.trim() },
+                      { onSuccess: () => setCommentText("") },
+                    );
+                  }}
+                  disabled={addComment.isPending || !commentText.trim()}
+                  className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
+                >
+                  {addComment.isPending ? "Posting..." : "Comment"}
+                </button>
+              </div>
+              {addComment.isError && (
+                <p className="text-xs text-red-400">{addComment.error.message}</p>
+              )}
+            </div>
           </section>
 
           {/* Epic Cost Breakdown (for epics with token data) */}
